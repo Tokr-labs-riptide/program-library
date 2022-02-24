@@ -17,7 +17,13 @@ pub fn process_instruction(
     accounts: &[AccountInfo], // The account to say hello to
     _instruction_data: &[u8], // Ignored, all helloworld instructions are hellos
 ) -> ProgramResult {
-    msg!("Hello World Rust program entrypoint");
+
+    msg!("TOKR nft-minter Rust program entrypoint");
+    // Iterating accounts is safer than indexing
+    let accounts_iter = &mut accounts.iter();
+
+    let account = next_account_info(accounts_iter)?;
+    msg!("Account! {}, program! {} ", account.owner, program_id);
 
     Ok(())
 }
