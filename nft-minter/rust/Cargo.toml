@@ -1,0 +1,27 @@
+
+[package]
+name = "tokr-nft-minter"
+version = "0.0.1"
+repository = "https://github.com/TOKR-labs/program-library"
+license = ""
+edition = "2018"
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+borsh = "0.9.3"
+borsh-derive = "0.9.1"
+solana-program = "~1.8.14"
+thiserror = "1.0.24"
+
+[dev-dependencies]
+solana-program-test = "~1.8.14"
+solana-sdk = "~1.8.14"
+
+[lib]
+name = "nftminter"
+crate-type = ["cdylib", "lib"]
+
+[net]
+git-fetch-with-cli = true
