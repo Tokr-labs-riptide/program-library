@@ -240,6 +240,7 @@ export class NumberOfShareArgs extends Borsh.Data<{
 
 /**
  * Say hello
+ * TODO integrate into 
  */
 export async function sayHello(): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
@@ -248,13 +249,15 @@ export async function sayHello(): Promise<void> {
     test: 'hello_borld'
   });
 
-  console.log(data)
+  console.log(data);
 
-  const instruction = new TransactionInstruction({
-    keys: [{pubkey: payer.publicKey, isSigner: false, isWritable: true}],
-    programId,
-    data
-  });
+  const instruction = new TransactionInstruction(
+    {
+      keys: [{pubkey: payer.publicKey, isSigner: false, isWritable: true}],
+      programId,
+      data
+    }
+  );
   const tx = await sendAndConfirmTransaction(
     connection,
     new Transaction().add(instruction),
