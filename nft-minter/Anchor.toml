@@ -1,0 +1,14 @@
+[features]
+seeds = false
+[programs.localnet]
+nft_minter = "HSGG76jpcWUrmN1YmiwFEdYddihuZhAYcCfqamj3HcC1"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "/Users/asmith/.config/solana/devnet.json"
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 tests/**/*.ts"
