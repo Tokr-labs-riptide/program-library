@@ -6,8 +6,9 @@ import {
   establishConnection,
   establishPayer,
   checkProgram,
-  sayHello,
-  reportGreetings,
+  createMint,
+  runContract,
+  runContract2
 } from './hello_world';
 
 async function main() {
@@ -23,7 +24,7 @@ async function main() {
   await checkProgram();
 
   // Say hello to an account
-  await sayHello();
+  await createMint();
 
   console.log('Success');
 }

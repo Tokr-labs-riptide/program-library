@@ -13,7 +13,8 @@
     "@solana/web3.js": "^1.33.0",
     "borsh": "^0.7.0",
     "mz": "^2.7.0",
-    "yaml": "^1.10.2"
+    "yaml": "^1.10.2",
+    "@project-serum/anchor": "^0.17.0"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",
