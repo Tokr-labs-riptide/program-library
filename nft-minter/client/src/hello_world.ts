@@ -226,16 +226,22 @@ export async function checkProgram(): Promise<void> {
 //   isMutable: boolean;
 // }
 
-export class NumberOfShareArgs extends Borsh.Data<{
-  test: string;
+export class MintArgs extends Borsh.Data<{
+  name: string;
+  symbol: string;
+  uri: string;
 }> {
   static readonly SCHEMA = this.struct([
     ['instruction', 'u8'],
-    ['test', 'string'],
+    ['name', 'string'],
+    ['symbol', 'string'],
+    ['uri', 'string']
   ]);
 
   instruction = 0;
-  test: string;
+  name: string;
+  symbol: string;
+  uri: string;
 }
 
 /**
@@ -244,9 +250,10 @@ export class NumberOfShareArgs extends Borsh.Data<{
  */
 export async function sayHello(): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
-
-  const data = NumberOfShareArgs.serialize({
-    test: 'hello_borld'
+  const data = MintArgs.serialize({
+    name: 'hello',
+    symbol: 'world',
+    uri: 'www.google.com'
   });
 
   console.log(data);
@@ -255,14 +262,24 @@ export async function sayHello(): Promise<void> {
     {
       keys: [{pubkey: payer.publicKey, isSigner: false, isWritable: true}],
       programId,
-      data
+      data: data
     }
   );
+
+  // const txxx = new Transaction().add(instruction);
+  // console.log("tx0");
+  // console.log(instruction.toString());
+  // console.log("tx1");
+  // console.log(txxx.serialize().toString('base64'));
+  // console.log("tx2");
   const tx = await sendAndConfirmTransaction(
     connection,
     new Transaction().add(instruction),
     [payer],
   );
+
+
+  // console.log(instruction);
 
   console.log("Transaction id:", tx);
 }

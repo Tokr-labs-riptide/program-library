@@ -30,7 +30,7 @@ pub fn process(
 
     match instruction {
         NftMinterInstruction::MintNftWithMetaData(args) => {
-            msg!("Args: {}", args.test)
+            msg!("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
         }
     }
 
@@ -43,24 +43,24 @@ pub fn process(
     let (mint_key, bump) = Pubkey::find_program_address(&["tokr".as_bytes()], &program_id);
     msg!("mint {} ", mint_key);
 
-    let rent = Rent {
-        lamports_per_byte_year: Mint::LEN as u64, //todo figure out spl_token mint size
-        ..Rent::default()
-    };
+    // let rent = Rent {
+    //     lamports_per_byte_year: Mint::LEN as u64, //todo figure out spl_token mint size
+    //     ..Rent::default()
+    // };
 
-    let ins = &system_instruction::create_account(
-        payer.key, 
-        &mint_key, 
-        rent.minimum_balance(Mint::LEN),
-        Mint::LEN as u64,
-        program_id);
+    // let ins = &system_instruction::create_account(
+    //     payer.key, 
+    //     &mint_key, 
+    //     rent.minimum_balance(Mint::LEN),
+    //     Mint::LEN as u64,
+    //     program_id);
 
-    msg!("create account");
-    let result = invoke_signed(
-        ins,
-        &[payer.clone()],
-        &[&["tokr".as_bytes(), &[bump]]]
-    );
+    // msg!("create account");
+    // let result = invoke_signed(
+    //     ins,
+    //     &[payer.clone()],
+    //     &[&["tokr".as_bytes(), &[bump]]]
+    // );
 
 
     // let mint_key = Pubkey::create_with_seed(payer.key, SEED, program_id).unwrap();
