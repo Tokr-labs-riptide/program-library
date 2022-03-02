@@ -6,9 +6,8 @@ import {
   establishConnection,
   establishPayer,
   checkProgram,
-  createMint,
   runContract,
-} from './hello_world';
+} from './tokr';
 
 async function main() {
   console.log("Let's say hello to a Solana account...");
