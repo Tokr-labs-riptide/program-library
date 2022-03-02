@@ -8,7 +8,6 @@ import {
   checkProgram,
   createMint,
   runContract,
-  runContract2
 } from './hello_world';
 
 async function main() {

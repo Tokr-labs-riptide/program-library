@@ -60,50 +60,29 @@ pub fn process(
     let min_len = Mint::LEN as u64;
     msg!("minimum rent len {}", min_len);
 
-    msg!("create account5");
-    let result = invoke_signed(
-        &system_instruction::create_account(
-            payer.key, 
-            &mint_key, 
-            1461600 as u64, // wtf why does minimum balance give not enough
-            min_len,
-            &spl_token::id()),
-        accounts,
-        &[&[payer.key.as_ref(), b"test2", &[bump]]]
-    );
-
-    msg!("init mint3");
-    let result = invoke_signed(
-        &initialize_mint(
-            &spl_token::id(),
-            &mint_key, 
-            program_id, 
-            Some(program_id), 
-            0
-        )?,
-        accounts,
-        &[&[payer.key.as_ref(), b"test2", &[bump]]]
-    );
-
-
-    // let mint_key = Pubkey::create_with_seed(payer.key, SEED, program_id).unwrap();
-    // msg!("mint {} ", mint_key);
-
-    // let rent = Rent {
-    //     lamports_per_byte_year: Mint::LEN as u64, //todo figure out spl_token mint size
-    //     ..Rent::default()
-    // };
-
-    // let result = invoke(
-    //     &system_instruction::create_account_with_seed(
+    // msg!("create account5");
+    // let result = invoke_signed(
+    //     &system_instruction::create_account(
     //         payer.key, 
     //         &mint_key, 
-    //         payer.key, 
-    //         SEED, 
-    //         rent.minimum_balance(Mint::LEN),
-    //         Mint::LEN as u64,
-    //         program_id),
-    //     &[payer.clone()]
+    //         1461600 as u64, // wtf why does minimum balance give not enough
+    //         min_len,
+    //         &spl_token::id()),
+    //     accounts,
+    //     &[&[payer.key.as_ref(), b"test2", &[bump]]]
+    // );
+
+    // msg!("init mint3");
+    // let result = invoke_signed(
+    //     &initialize_mint(
+    //         &spl_token::id(),
+    //         &mint_key, 
+    //         program_id, 
+    //         Some(program_id), 
+    //         0
+    //     )?,
+    //     accounts,
+    //     &[&[payer.key.as_ref(), b"test2", &[bump]]]
     // );
 
     msg!("!!!");

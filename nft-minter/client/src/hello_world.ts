@@ -176,6 +176,31 @@ export class MintArgs extends Borsh.Data<{
   uri: string;
 }
 
+export class MintArgs2 {
+  instruction = 0;
+  name: string;
+  symbol: string;
+  uri: string;
+  constructor(fields: {name: string, symbol: string, uri: string} | undefined = undefined) {
+    if (fields) {
+      this.name = fields.name;
+      this.symbol = fields.symbol;
+      this.uri = fields.uri;
+    }
+  }
+}
+
+const MintSchema = new Map([
+  [MintArgs2, {
+    kind: 'struct', 
+    fields: [
+      ['instruction', 'u8'],
+      ['name', 'string'],
+      ['symbol', 'string'],
+      ['uri', 'string']
+    ]}],
+]);
+
 
 // const daoKey = new PublicKey("CRtSDiPfYHkeecFDUt7cG2sBGJFzkJt24B16HZ4kcCL6");
 
@@ -306,90 +331,17 @@ export async function createMint(): Promise<void> {
   console.log("Tx id: {}", tx)
 }
 
-export async function runContract2(): Promise<void> { 
-  
-  const instructions: TransactionInstruction[] = [];
-  const signers: Keypair[] = [mint, payer];
-  const userTokenAccoutAddress = await getTokenWallet(
-    payer.publicKey,
-    mint.publicKey,
-  );
-  instructions.push(
-    createAssociatedTokenAccountInstruction(
-      userTokenAccoutAddress,
-      payer.publicKey,
-      payer.publicKey,
-      mint.publicKey,
-    ),
-  );
-
-  const data = new DataV2({
-    symbol: "hellow",
-    name: "world",
-    uri: "https://d2jcpdpj3m9ych.cloudfront.net/genericAssetDirectory/2022-03-01T15:39:51.094582719Z.NA",
-    sellerFeeBasisPoints: 0,
-    creators: null,
-    collection: null,
-    uses: null,
-  });
-
-    // Create metadata
-    const metadataAccount = await getMetadata(mint.publicKey);
-    let txnData = Buffer.from(
-      borsh.serialize(
-        new Map([
-          DataV2.SCHEMA,
-          ...METADATA_SCHEMA,
-          ...CreateMetadataV2Args.SCHEMA,
-        ]),
-        new CreateMetadataV2Args({ data, isMutable: false }),
-      ),
-    );
-  
-    instructions.push(
-      createMetadataInstruction(
-        metadataAccount,
-        mint.publicKey,
-        payer.publicKey,
-        payer.publicKey,
-        payer.publicKey,
-        txnData,
-      ),
-    );
-
-
-    instructions.push(
-      Token.createMintToInstruction(
-        TOKEN_PROGRAM_ID,
-        mint.publicKey,
-        userTokenAccoutAddress,
-        payer.publicKey,
-        [],
-        1,
-      ),
-    );
-  
-    const transaction = new Transaction();
-    instructions.forEach(instruction => transaction.add(instruction));
-    const tx = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      signers,
-    );
-
-    console.log("Tx id: {}", tx)
-}
-
-
 export async function runContract(): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
-  const data = MintArgs.serialize({
-    name: 'hello',
-    symbol: 'world',
-    uri: 'www.google.com'
-  });
 
-  console.log(data);
+  const data = Buffer.from(borsh.serialize(
+    MintSchema,
+    new MintArgs2({
+      name: 'hello',
+      symbol: 'world',
+      uri: 'www.goo12213gle.com'
+    })
+  ));
 
   const mint = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), Buffer.from("test2", "utf-8")], programId))[0];
 
@@ -409,20 +361,11 @@ export async function runContract(): Promise<void> {
     }
   );
 
-  // const txxx = new Transaction().add(instruction);
-  // console.log("tx0");
-  // console.log(instruction.toString());
-  // console.log("tx1");
-  // console.log(txxx.serialize().toString('base64'));
-  // console.log("tx2");
   const tx = await sendAndConfirmTransaction(
     connection,
     new Transaction().add(instruction),
     [payer],
   );
-
-
-  // console.log(instruction);
 
   console.log("Transaction id:", tx);
 }
