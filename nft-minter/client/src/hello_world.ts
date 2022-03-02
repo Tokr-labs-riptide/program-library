@@ -391,9 +391,19 @@ export async function runContract(): Promise<void> {
 
   console.log(data);
 
+  const mint = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), Buffer.from("test2", "utf-8")], programId))[0];
+
+  console.log("mint", mint.toBase58());
+
   const instruction = new TransactionInstruction(
     {
-      keys: [{pubkey: payer.publicKey, isSigner: false, isWritable: true}],
+      keys: [
+        {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
+        {pubkey: mint, isSigner: false, isWritable: true}, 
+        {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+        {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+      ],
       programId,
       data: data
     }

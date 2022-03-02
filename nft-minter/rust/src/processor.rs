@@ -1,9 +1,10 @@
 use solana_program::{
     rent,
+    instruction::{AccountMeta},
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed},
+    program::{invoke, invoke_signed, invoke_signed_unchecked},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     sysvar::{rent::Rent, Sysvar},
@@ -14,6 +15,7 @@ use spl_token::{
     self,
     instruction::initialize_mint,
     state::Mint
+    
     
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -40,27 +42,48 @@ pub fn process(
     let payer = next_account_info(accounts_iter)?;
     msg!("payer {} ", payer.key);
 
-    let (mint_key, bump) = Pubkey::find_program_address(&["tokr".as_bytes()], &program_id);
-    msg!("mint {} ", mint_key);
+    let mint_input = next_account_info(accounts_iter)?;
+    msg!("mint_input {} ", mint_input.key);
 
-    // let rent = Rent {
-    //     lamports_per_byte_year: Mint::LEN as u64, //todo figure out spl_token mint size
-    //     ..Rent::default()
-    // };
+    let token_program = next_account_info(accounts_iter)?;
+    msg!("token_program {} ", token_program.key);
 
-    // let ins = &system_instruction::create_account(
-    //     payer.key, 
-    //     &mint_key, 
-    //     rent.minimum_balance(Mint::LEN),
-    //     Mint::LEN as u64,
-    //     program_id);
+    let (mint_key, bump) = Pubkey::find_program_address(&[payer.key.as_ref(), b"test2"], &program_id);
+    msg!("mint pda{} ", mint_key);
 
-    // msg!("create account");
-    // let result = invoke_signed(
-    //     ins,
-    //     &[payer.clone()],
-    //     &[&["tokr".as_bytes(), &[bump]]]
-    // );
+    let rent = Rent {
+        lamports_per_byte_year: Mint::LEN as u64,
+        ..Rent::default()
+    };
+    let min_bal = rent.minimum_balance(Mint::LEN);
+    msg!("minimum rent {}", min_bal);
+    let min_len = Mint::LEN as u64;
+    msg!("minimum rent len {}", min_len);
+
+    msg!("create account5");
+    let result = invoke_signed(
+        &system_instruction::create_account(
+            payer.key, 
+            &mint_key, 
+            1461600 as u64, // wtf why does minimum balance give not enough
+            min_len,
+            &spl_token::id()),
+        accounts,
+        &[&[payer.key.as_ref(), b"test2", &[bump]]]
+    );
+
+    msg!("init mint3");
+    let result = invoke_signed(
+        &initialize_mint(
+            &spl_token::id(),
+            &mint_key, 
+            program_id, 
+            Some(program_id), 
+            0
+        )?,
+        accounts,
+        &[&[payer.key.as_ref(), b"test2", &[bump]]]
+    );
 
 
     // let mint_key = Pubkey::create_with_seed(payer.key, SEED, program_id).unwrap();
@@ -85,17 +108,7 @@ pub fn process(
 
     msg!("!!!");
 
-    // let result = invoke(
-    //     &initialize_mint(
-    //         &spl_token::id(),
-    //         mint_key, 
-    //         payer.key, 
-    //         Some(payer.key), 
-    //         0
-    //     )?,
-    //     &[payer.clone()]
-    // );
+
 
     Ok(())
 }
-

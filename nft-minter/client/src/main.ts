@@ -24,7 +24,7 @@ async function main() {
   await checkProgram();
 
   // Say hello to an account
-  await createMint();
+  await runContract();
 
   console.log('Success');
 }
