@@ -20,7 +20,7 @@ use spl_token::{
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{instruction::NftMinterInstruction};
+use crate::{instruction::TokrizerInstruction};
 
 pub fn process(
     program_id: &Pubkey,
@@ -28,51 +28,62 @@ pub fn process(
     instruction_data: &[u8],
 ) -> ProgramResult {
     msg!("Starting up program! {} ", program_id);
-    let instruction = NftMinterInstruction::try_from_slice(instruction_data)?;
+    let instruction = TokrizerInstruction::try_from_slice(instruction_data)?;
 
     match instruction {
-        NftMinterInstruction::MintNftWithMetaData(args) => {
+        TokrizerInstruction::MintNftWithMetaData(args) => {
             msg!("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
+            tokrize(program_id, accounts, args.name, args.symbol, args.uri);
         }
     }
 
+    Ok(())
+}
+
+
+pub fn tokrize(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    name: String,
+    symbol: String,
+    uri: String
+) -> ProgramResult {
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
 
     let payer = next_account_info(accounts_iter)?;
-    msg!("payer {} ", payer.key);
+    msg!("payer: {} ", payer.key);
 
     let mint_input = next_account_info(accounts_iter)?;
-    msg!("mint_input {} ", mint_input.key);
+    msg!("mint_input: {} ", mint_input.key);
 
     let token_program = next_account_info(accounts_iter)?;
-    msg!("token_program {} ", token_program.key);
+    msg!("token_program: {} ", token_program.key);
 
-    let (mint_key, bump) = Pubkey::find_program_address(&[payer.key.as_ref(), b"test2"], &program_id);
-    msg!("mint pda{} ", mint_key);
+    let (mint_key, bump) = Pubkey::find_program_address(&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes()], &program_id);
+    msg!("mint pda: {} ", mint_key);
 
-    let rent = Rent {
-        lamports_per_byte_year: Mint::LEN as u64,
-        ..Rent::default()
-    };
-    let min_bal = rent.minimum_balance(Mint::LEN);
-    msg!("minimum rent {}", min_bal);
-    let min_len = Mint::LEN as u64;
-    msg!("minimum rent len {}", min_len);
+    // let rent = Rent {
+    //     lamports_per_byte_year: Mint::LEN as u64,
+    //     ..Rent::default()
+    // };
+    // let min_bal = rent.minimum_balance(Mint::LEN);
+    // msg!("minimum rent {}", min_bal);
 
-    msg!("create account5");
+
+    msg!("create account");
     let result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
             &mint_key, 
             1461600 as u64, // wtf why does minimum balance give not enough
-            min_len,
+            Mint::LEN as u64,
             &spl_token::id()),
         accounts,
-        &[&[payer.key.as_ref(), b"test2", &[bump]]]
+        &[&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes(), &[bump]]]
     );
 
-    msg!("init mint3");
+    msg!("init mint");
     let result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
@@ -82,12 +93,10 @@ pub fn process(
             0
         )?,
         accounts,
-        &[&[payer.key.as_ref(), b"test2", &[bump]]]
+        &[&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes(), &[bump]]]
     );
 
     msg!("!!!");
-
-
 
     Ok(())
 }

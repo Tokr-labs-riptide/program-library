@@ -180,19 +180,15 @@ const TokrizeSchema = new Map([
 ]);
 
 
-export async function runContract(): Promise<void> {
+export async function runContract(args: TokrizeArgs): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
 
   const data = Buffer.from(borsh.serialize(
     TokrizeSchema,
-    new TokrizeArgs({
-      name: 'hello',
-      symbol: 'world',
-      uri: 'www.goo12213gle.com'
-    })
+    args
   ));
 
-  const mint = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), Buffer.from("test2", "utf-8")], programId))[0];
+  const mint = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), Buffer.from(args.name, "utf-8"), Buffer.from(args.uri, "utf-8")], programId))[0];
 
   console.log("mint", mint.toBase58());
 
