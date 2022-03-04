@@ -13,5 +13,6 @@ pub struct MintArgs {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub enum TokrizerInstruction {
 
-    MintNftWithMetaData(MintArgs)
+    CreateMint(MintArgs),
+    // MintNft(MintArgs)
 }
