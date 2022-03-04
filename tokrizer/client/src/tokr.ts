@@ -196,6 +196,8 @@ export async function runContract(args: TokrizeArgs): Promise<void> {
 
   const metadataAccount = (await PublicKey.findProgramAddress([Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], TOKEN_METADATA_PROGRAM_ID))[0];
 
+  // todo replace with dest
+  const tokenAta = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
   const instruction = new TransactionInstruction(
     {
@@ -207,7 +209,8 @@ export async function runContract(args: TokrizeArgs): Promise<void> {
         {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
         {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
         {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-        // {pubkey: tokenAta, isSigner: false, isWritable: true},
+        {pubkey: tokenAta, isSigner: false, isWritable: true},
+        {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
         {pubkey: programId, isSigner: false, isWritable: false}, // todo this might not be needed
       ],
       programId,
@@ -215,90 +218,14 @@ export async function runContract(args: TokrizeArgs): Promise<void> {
     }
   );
 
-  const tx2 = await sendAndConfirmTransaction(
+  const tx = await sendAndConfirmTransaction(
     connection,
     new Transaction().add(instruction),
     [payer],
   );
 
-
-  const tokenAta = await getTokenWallet(
-      payer.publicKey,
-      mintAccount,
-  );
-  
-
-
-  console.log("Create ATA at address:", tokenAta.toBase58())
-
-  const tx1 = await sendAndConfirmTransaction(
-    connection,
-    new Transaction().add(
-      createAssociatedTokenAccountInstruction(
-        tokenAta,
-        payer.publicKey,
-        payer.publicKey,
-        mintAccount,
-      )
-    ),
-    [payer]
-  );
-  console.log("Transaction id:", tx1);
-
-
-  console.log("Transaction id:", tx2);
+  console.log("Transaction id:", tx);
 }
-
-export function createAssociatedTokenAccountInstruction(
-  associatedTokenAddress: PublicKey,
-  payer: PublicKey,
-  walletAddress: PublicKey,
-  splTokenMintAddress: PublicKey,
-) {
-  const keys = [
-      {
-          pubkey: payer,
-          isSigner: true,
-          isWritable: true,
-      },
-      {
-          pubkey: associatedTokenAddress,
-          isSigner: false,
-          isWritable: true,
-      },
-      {
-          pubkey: walletAddress,
-          isSigner: false,
-          isWritable: false,
-      },
-      {
-          pubkey: splTokenMintAddress,
-          isSigner: false,
-          isWritable: false,
-      },
-      {
-          pubkey: SystemProgram.programId,
-          isSigner: false,
-          isWritable: false,
-      },
-      {
-          pubkey: TOKEN_PROGRAM_ID,
-          isSigner: false,
-          isWritable: false,
-      },
-      {
-          pubkey: SYSVAR_RENT_PUBKEY,
-          isSigner: false,
-          isWritable: false,
-      },
-  ];
-  return new TransactionInstruction({
-      keys,
-      programId: ASSOCIATED_TOKEN_PROGRAM_ID,
-      data: Buffer.from([]),
-  });
-}
-
 
 export const getTokenWallet = async function (
   wallet: PublicKey,
