@@ -7,6 +7,7 @@ import {
   establishPayer,
   checkProgram,
   runContract,
+  TokrizeArgs
 } from './tokr';
 
 async function main() {
@@ -21,8 +22,11 @@ async function main() {
   // Check if the program has been deployed
   await checkProgram();
 
-  // Say hello to an account
-  await runContract();
+  await runContract(new TokrizeArgs({
+    name: 'itsmaabcaa',
+    symbol: 'worlda',
+    uri: 'www.googlealacb.com'
+  }));
 
   console.log('Success');
 }

@@ -83,8 +83,11 @@ export async function createMint(): Promise<void> {
     );
 
 
+
+    const destination = new PublicKey("");
+
     const ATAAddress = await getTokenWallet(
-        payer.publicKey,
+        destination,
         mint.publicKey,
     );
 
@@ -95,7 +98,7 @@ export async function createMint(): Promise<void> {
         createAssociatedTokenAccountInstruction(
             ATAAddress,
             payer.publicKey,
-            payer.publicKey,
+            destination,
             mint.publicKey,
         ),
     );
@@ -106,9 +109,9 @@ export async function createMint(): Promise<void> {
     console.log("Metadata account:", metadataAccount);
 
     const data = new DataV2({
-        symbol: "hellow",
-        name: "world",
-        uri: "https://d2jcpdpj3m9ych.cloudfront.net/genericAssetDirectory/2022-03-01T15:39:51.094582719Z.NA",
+        symbol: "Gravity",
+        name: "TOKR-g1",
+        uri: "https://ipfs.io/ipfs/QmVQ8aqvv66xcvTSf7j85BUpEtPPKNmFAn7yXtpTfy7gGF?filename=alexkevtry3.json",
         sellerFeeBasisPoints: 0,
         creators: null,   //todo fill this out
         collection: null,
