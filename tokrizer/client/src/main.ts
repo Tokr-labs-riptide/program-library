@@ -23,7 +23,7 @@ async function main() {
   await checkProgram();
 
   await runContract(new TokrizeArgs({
-    name: 'itsmaAA',
+    name: 'itsmaAAA',
     symbol: 'worlda',
     uri: 'www.googleal.com'
   }));

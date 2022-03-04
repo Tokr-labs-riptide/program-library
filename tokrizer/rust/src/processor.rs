@@ -13,7 +13,7 @@ use solana_program::{
 };
 use spl_token::{
     self,
-    instruction::{initialize_mint},
+    instruction::{initialize_mint, mint_to},
     state::Mint
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -161,6 +161,18 @@ pub fn tokrize(
         ),
         accounts,
         &[&[b"metadata", metadata_program.key.as_ref(), mint_key.as_ref(), &[metadata_bump]]]
+    );
+
+    let result = invoke(
+        &mint_to(
+            &spl_token::id(),
+            &mint_key,
+            token_ata_input.key,
+            payer.key,
+            &[&payer.key],
+            1 as u64
+        )?,
+        accounts
     );
 
 
