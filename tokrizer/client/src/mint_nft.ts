@@ -84,7 +84,7 @@ export async function createMint(): Promise<void> {
 
 
 
-    const destination = new PublicKey("C3Mg4R2d6nedHCa9HK5Sd45uf4n9gi97XkH2NdjVYh7t");
+    const destination = new PublicKey("");
 
     const ATAAddress = await getTokenWallet(
         destination,
