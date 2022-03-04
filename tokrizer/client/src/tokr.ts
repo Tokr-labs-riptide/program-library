@@ -205,13 +205,12 @@ export async function runContract(args: TokrizeArgs): Promise<void> {
         {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
         {pubkey: mintAccount, isSigner: false, isWritable: true}, 
         {pubkey: metadataAccount, isSigner: false, isWritable: true}, 
+        {pubkey: tokenAta, isSigner: false, isWritable: true},
         {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
         {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
         {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
         {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-        {pubkey: tokenAta, isSigner: false, isWritable: true},
         {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: programId, isSigner: false, isWritable: false}, // todo this might not be needed
       ],
       programId,
       data: data

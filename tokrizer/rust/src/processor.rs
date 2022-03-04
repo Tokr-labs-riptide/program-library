@@ -66,6 +66,9 @@ pub fn tokrize(
     let metadata_acct = next_account_info(accounts_iter)?;
     //msg!(("metadata_acct: {} ", metadata_acct.key);
 
+    let token_ata_input = next_account_info(accounts_iter)?;
+    //msg!(("token_ata_input: {} ", token_ata_input.key);
+
     let token_program = next_account_info(accounts_iter)?;
     //msg!(("token_program: {} ", token_program.key);
 
@@ -77,9 +80,6 @@ pub fn tokrize(
 
     let rent_key = next_account_info(accounts_iter)?;
     //msg!(("rent_key: {} ", rent_key.key);
-
-    let token_ata_input = next_account_info(accounts_iter)?;
-    //msg!(("token_ata_input: {} ", token_ata_input.key);
 
     // todo check if mint input is correct
     let (mint_key, mint_bump) = Pubkey::find_program_address(&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes()], &program_id);

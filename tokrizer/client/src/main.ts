@@ -23,9 +23,9 @@ async function main() {
   await checkProgram();
 
   await runContract(new TokrizeArgs({
-    name: 'itsmaAAA',
+    name: 'itsmaabcaa',
     symbol: 'worlda',
-    uri: 'www.googleal.com'
+    uri: 'www.googlealacb.com'
   }));
 
   console.log('Success');
