@@ -38,7 +38,7 @@ pub fn process(
 
     match instruction {
         TokrizerInstruction::CreateMint(args) => {
-            //msg!(("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
+            msg!("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
             tokrize(program_id, accounts, args.name, args.symbol, args.uri, args.mint_bump, args.mint_seed);
         }
     }
