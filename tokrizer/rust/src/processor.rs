@@ -62,6 +62,9 @@ pub fn tokrize(
     let payer = next_account_info(accounts_iter)?;
     //msg!(("payer: {} ", payer.key);
 
+    let destination = next_account_info(accounts_iter)?;
+    //msg!(("payer: {} ", payer.key);
+
     let mint_input = next_account_info(accounts_iter)?;
     //msg!(("mint_input: {} ", mint_input.key);
 
@@ -127,13 +130,13 @@ pub fn tokrize(
     let result = invoke(
         &create_associated_token_account(
             payer.key,
-            payer.key,   // todo replace with dest
+            destination.key,   // todo replace with dest
             mint_input.key, 
         ),
         &[
             payer.clone(), 
             token_ata_input.clone(), 
-            payer.clone(),  // todo replace with dest
+            destination.clone(),  // todo replace with dest
             mint_input.clone(), 
             system_program.clone(), 
             token_program.clone(), 

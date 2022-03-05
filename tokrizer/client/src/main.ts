@@ -1,7 +1,7 @@
 /**
  * Hello world
  */
-
+ import {PublicKey} from '@solana/web3.js';
 import {
   establishConnection,
   establishPayer,
@@ -9,6 +9,7 @@ import {
   runContract,
   TokrizeArgs
 } from './tokr';
+
 
 async function main() {
   console.log("Let's say hello to a Solana account...");
@@ -31,7 +32,9 @@ async function main() {
     uri: 'aaaaaaaa',
     mint_bump: NaN,
     mint_seed: ''
-  }));
+  }),
+  new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
+  );
 
   console.log('Success');
 }

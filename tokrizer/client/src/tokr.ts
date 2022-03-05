@@ -170,7 +170,7 @@ const TokrizeSchema = new Map([
 ]);
 
 
-export async function runContract(args: TokrizeArgs): Promise<void> {
+export async function runContract(args: TokrizeArgs, destination: PublicKey): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
 
   let r = (Math.random() + 1).toString(36).substring(7);
@@ -190,13 +190,13 @@ export async function runContract(args: TokrizeArgs): Promise<void> {
 
   const metadataAccount = (await PublicKey.findProgramAddress([Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], TOKEN_METADATA_PROGRAM_ID))[0];
 
-  // todo replace with dest
-  const tokenAta = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
+  const tokenAta = (await PublicKey.findProgramAddress([destination.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
   const instruction = new TransactionInstruction(
     {
       keys: [
         {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
+        {pubkey: destination, isSigner: false, isWritable: true}, 
         {pubkey: mintAccount, isSigner: false, isWritable: true}, 
         {pubkey: metadataAccount, isSigner: false, isWritable: true}, 
         {pubkey: tokenAta, isSigner: false, isWritable: true},
