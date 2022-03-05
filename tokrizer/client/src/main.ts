@@ -23,9 +23,14 @@ async function main() {
   await checkProgram();
 
   await runContract(new TokrizeArgs({
-    name: 'itsmaabcaa',
+    // name: 'smaABC',
+    // symbol: 'worlda',
+    // uri: 'www.gaasd.com'
+    name: 'itsmaAB',
     symbol: 'worlda',
-    uri: 'www.googlealacb.com'
+    uri: 'aaaaaaaa',
+    mint_bump: NaN,
+    mint_seed: ''
   }));
 
   console.log('Success');

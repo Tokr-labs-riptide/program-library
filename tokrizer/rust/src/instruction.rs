@@ -6,7 +6,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub struct MintArgs {
     pub name: String,
     pub symbol: String,
-    pub uri: String
+    pub uri: String,
+    pub mint_bump: u8,
+    pub mint_seed: String
 }
 
 #[repr(C)]

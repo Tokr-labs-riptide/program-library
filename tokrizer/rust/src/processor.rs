@@ -39,7 +39,7 @@ pub fn process(
     match instruction {
         TokrizerInstruction::CreateMint(args) => {
             //msg!(("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
-            tokrize(program_id, accounts, args.name, args.symbol, args.uri);
+            tokrize(program_id, accounts, args.name, args.symbol, args.uri, args.mint_bump, args.mint_seed);
         }
     }
 
@@ -52,7 +52,9 @@ pub fn tokrize(
     accounts: &[AccountInfo],
     name: String,
     symbol: String,
-    uri: String
+    uri: String,
+    mint_bump: u8,
+    mint_seed: String
 ) -> ProgramResult {
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
@@ -82,11 +84,11 @@ pub fn tokrize(
     //msg!(("rent_key: {} ", rent_key.key);
 
     // todo check if mint input is correct
-    let (mint_key, mint_bump) = Pubkey::find_program_address(&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes()], &program_id);
-    //msg!(("mint_pda: {} ", mint_key);
+    // let (mint_key, mint_bump) = Pubkey::find_program_address(&[payer.key.as_ref(), uri.as_bytes(), program_id.as_ref()], &program_id);
+    msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
 
     // todo check if metadata input is correct
-    let (metadata_key, metadata_bump) = Pubkey::find_program_address(&[b"metadata", metadata_program.key.as_ref(), mint_key.as_ref()], &metadata_program.key);
+    let (metadata_key, metadata_bump) = Pubkey::find_program_address(&[b"metadata", metadata_program.key.as_ref(), mint_input.key.as_ref()], &metadata_program.key);
     //msg!(("metadata_pda: {} ", metadata_key);
 
     // let rent = Rent {
@@ -101,32 +103,32 @@ pub fn tokrize(
     let result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
-            &mint_key, 
+            mint_input.key, 
             1461600 as u64, // wtf why does minimum balance give not enough
             Mint::LEN as u64,
             &spl_token::id()),
         accounts,
-        &[&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes(), &[mint_bump]]]
+        &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
     );
 
     //msg!(("init mint");
     let result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
-            &mint_key, 
+            mint_input.key, 
             payer.key, 
             Some(program_id), 
             0
         )?,
         accounts,
-        &[&[payer.key.as_ref(), name.as_bytes(), uri.as_bytes(), &[mint_bump]]]
+        &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
     );
 
     let result = invoke(
         &create_associated_token_account(
             payer.key,
             payer.key,   // todo replace with dest
-            &mint_key, 
+            mint_input.key, 
         ),
         &[
             payer.clone(), 
@@ -145,7 +147,7 @@ pub fn tokrize(
         &create_metadata_accounts_v2(
             mpl_token_metadata::ID,
             metadata_key,
-            mint_key, 
+            *mint_input.key, 
             *payer.key, 
             *payer.key,
             *payer.key,  //todo how to set program as update authority
@@ -160,13 +162,13 @@ pub fn tokrize(
             None
         ),
         accounts,
-        &[&[b"metadata", metadata_program.key.as_ref(), mint_key.as_ref(), &[metadata_bump]]]
+        &[&[b"metadata", metadata_program.key.as_ref(), mint_input.key.as_ref(), &[metadata_bump]]]
     );
 
     let result = invoke(
         &mint_to(
             &spl_token::id(),
-            &mint_key,
+            mint_input.key,
             token_ata_input.key,
             payer.key,
             &[&payer.key],

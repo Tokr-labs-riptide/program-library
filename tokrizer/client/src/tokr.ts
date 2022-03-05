@@ -138,34 +138,20 @@ export async function checkProgram(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 }
 
-export class MintArgsOld extends Borsh.Data<{
-  name: string;
-  symbol: string;
-  uri: string;
-}> {
-  static readonly SCHEMA = this.struct([
-    ['instruction', 'u8'],
-    ['name', 'string'],
-    ['symbol', 'string'],
-    ['uri', 'string']
-  ]);
-
-  instruction = 0;
-  name: string;
-  symbol: string;
-  uri: string;
-}
-
 export class TokrizeArgs {
   instruction = 0;
   name: string;
   symbol: string;
   uri: string;
-  constructor(fields: {name: string, symbol: string, uri: string} | undefined = undefined) {
+  mint_bump: number;
+  mint_seed: string;
+  constructor(fields: {name: string, symbol: string, uri: string, mint_bump: number, mint_seed: string} | undefined = undefined) {
     if (fields) {
       this.name = fields.name;
       this.symbol = fields.symbol;
       this.uri = fields.uri;
+      this.mint_bump = fields.mint_bump;
+      this.mint_seed = fields.mint_seed;
     }
   }
 }
@@ -177,7 +163,9 @@ const TokrizeSchema = new Map([
       ['instruction', 'u8'],
       ['name', 'string'],
       ['symbol', 'string'],
-      ['uri', 'string']
+      ['uri', 'string'],
+      ['mint_bump', 'u8'],
+      ['mint_seed', 'string']
     ]}],
 ]);
 
@@ -185,14 +173,20 @@ const TokrizeSchema = new Map([
 export async function runContract(args: TokrizeArgs): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
 
+  let r = (Math.random() + 1).toString(36).substring(7);
+  console.log("random", r);
+  args.mint_seed = r;
+  let pda = (await PublicKey.findProgramAddress([Buffer.from(r), payer.publicKey.toBuffer(), programId.toBuffer()], programId));
+  const mintAccount = pda[0]
+  args.mint_bump = pda[1]
+
+  console.log("mint", mintAccount.toBase58());
+  console.log("bump", args.mint_bump);
+
   const data = Buffer.from(borsh.serialize(
     TokrizeSchema,
     args
   ));
-
-  const mintAccount = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), Buffer.from(args.name, "utf-8"), Buffer.from(args.uri, "utf-8")], programId))[0];
-
-  console.log("mint", mintAccount.toBase58());
 
   const metadataAccount = (await PublicKey.findProgramAddress([Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], TOKEN_METADATA_PROGRAM_ID))[0];
 
