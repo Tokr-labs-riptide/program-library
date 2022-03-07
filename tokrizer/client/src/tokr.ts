@@ -13,15 +13,17 @@ import {
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { Borsh } from '@metaplex-foundation/mpl-core';
 import fs from 'mz/fs';
 import path from 'path';
 import * as borsh from 'borsh';
 import {getPayer, getRpcUrl, createKeypairFromFile} from './utils';
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
-  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" // devent
+  // "ACvZk7eoncqw4AywLBk7DzpjRWXjwTL2tkfzYLZ4FhiG"  // localhost
 );
+
+
 
 /**
  * Connection to the network
@@ -173,13 +175,14 @@ const TokrizeSchema = new Map([
 export async function runContract(args: TokrizeArgs, destination: PublicKey): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
 
-  let r = (Math.random() + 1).toString(36).substring(7);
-  console.log("random", r);
-  args.mint_seed = r;
-  let pda = (await PublicKey.findProgramAddress([Buffer.from(r), payer.publicKey.toBuffer(), programId.toBuffer()], programId));
+  let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
+  console.log("random", mintSeed);
+  args.mint_seed = mintSeed;
+  let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), programId.toBuffer()], programId));
   const mintAccount = pda[0]
   args.mint_bump = pda[1]
 
+  
   console.log("mint", mintAccount.toBase58());
   console.log("bump", args.mint_bump);
 
@@ -192,11 +195,13 @@ export async function runContract(args: TokrizeArgs, destination: PublicKey): Pr
 
   const tokenAta = (await PublicKey.findProgramAddress([destination.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
+  
   const instruction = new TransactionInstruction(
     {
       keys: [
         {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
         {pubkey: destination, isSigner: false, isWritable: true}, 
+        {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
         {pubkey: mintAccount, isSigner: false, isWritable: true}, 
         {pubkey: metadataAccount, isSigner: false, isWritable: true}, 
         {pubkey: tokenAta, isSigner: false, isWritable: true},

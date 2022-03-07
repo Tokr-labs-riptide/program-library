@@ -4,11 +4,11 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed, invoke_signed_unchecked},
+    program::{invoke, invoke_signed},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     sysvar::{rent::Rent, Sysvar},
-    pubkey::Pubkey,
+    pubkey::{Pubkey},
     system_instruction
 };
 use spl_token::{
@@ -17,9 +17,10 @@ use spl_token::{
     state::Mint
 };
 use borsh::{BorshDeserialize, BorshSerialize};
-
+use std::str::FromStr;
 use mpl_token_metadata::{
     instruction::{create_metadata_accounts_v2},
+    state::Creator
 };
 
 use spl_associated_token_account::{
@@ -37,9 +38,13 @@ pub fn process(
     let instruction = TokrizerInstruction::try_from_slice(instruction_data)?;
 
     match instruction {
-        TokrizerInstruction::CreateMint(args) => {
+        TokrizerInstruction::MintTokrNft(args) => {
             msg!("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
             tokrize(program_id, accounts, args.name, args.symbol, args.uri, args.mint_bump, args.mint_seed);
+        }
+        TokrizerInstruction::Fractionalize(args) => {
+            msg!("Fractionalize Nft. NumberOfShares: {}", args.number_of_shares);
+            fractionalize(program_id, accounts, args.number_of_shares);
         }
     }
 
@@ -63,6 +68,9 @@ pub fn tokrize(
     //msg!(("payer: {} ", payer.key);
 
     let destination = next_account_info(accounts_iter)?;
+    //msg!(("payer: {} ", payer.key);
+
+    let creator = next_account_info(accounts_iter)?;
     //msg!(("payer: {} ", payer.key);
 
     let mint_input = next_account_info(accounts_iter)?;
@@ -130,13 +138,13 @@ pub fn tokrize(
     let result = invoke(
         &create_associated_token_account(
             payer.key,
-            destination.key,   // todo replace with dest
+            destination.key,
             mint_input.key, 
         ),
         &[
             payer.clone(), 
             token_ata_input.clone(), 
-            destination.clone(),  // todo replace with dest
+            destination.clone(),
             mint_input.clone(), 
             system_program.clone(), 
             token_program.clone(), 
@@ -144,11 +152,16 @@ pub fn tokrize(
         ],
         // accounts,
     );
-
+    
+    let creator = Creator {
+        address: *creator.key,
+        verified: true,
+        share: 100 as u8
+    };
     //msg!(("create metadata account");
     let result = invoke_signed(
         &create_metadata_accounts_v2(
-            mpl_token_metadata::ID,
+            *metadata_program.key,
             metadata_key,
             *mint_input.key, 
             *payer.key, 
@@ -157,7 +170,7 @@ pub fn tokrize(
             name,
             symbol,
             uri,
-            None, //todo set creators
+            Some([creator].to_vec()),
             0,
             false,
             false,
@@ -182,6 +195,16 @@ pub fn tokrize(
 
 
     //msg!(("!!!");
+
+    Ok(())
+}
+
+
+pub fn fractionalize(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    number_of_shares: u64
+) -> ProgramResult {
 
     Ok(())
 }
