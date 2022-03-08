@@ -5,7 +5,6 @@ import {
     Keypair,
     Connection,
     PublicKey,
-    LAMPORTS_PER_SOL,
     SYSVAR_RENT_PUBKEY,
     SystemProgram,
     TransactionInstruction,
@@ -16,7 +15,7 @@ import { MintLayout, Token, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from
 import { DataV2, CreateMetadataV2Args } from '@metaplex-foundation/mpl-token-metadata';
 import { METADATA_SCHEMA } from './metaplex_schema';
 import * as borsh from 'borsh';
-import { getPayer, getRpcUrl, createKeypairFromFile } from './utils';
+import { getPayer, getRpcUrl} from './utils';
 
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(

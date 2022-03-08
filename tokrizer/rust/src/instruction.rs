@@ -11,10 +11,17 @@ pub struct MintArgs {
     pub mint_seed: String
 }
 
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct FractionalizeArgs {
+    pub number_of_shares: u64,
+}
+
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub enum TokrizerInstruction {
 
-    CreateMint(MintArgs),
-    // MintNft(MintArgs)
+    MintTokrNft(MintArgs),
+    Fractionalize(FractionalizeArgs)
 }

@@ -13,8 +13,8 @@ import {
 
 async function main() {
   console.log("Let's say hello to a Solana account...");
-
-  // Establish connection to the cluster
+  
+  //Establish connection to the cluster
   await establishConnection();
 
   // Determine who pays for the fees
@@ -27,9 +27,9 @@ async function main() {
     // name: 'smaABC',
     // symbol: 'worlda',
     // uri: 'www.gaasd.com'
-    name: 'itsmaAB',
-    symbol: 'worlda',
-    uri: 'aaaaaaaa',
+    name: 'This is an NFT',
+    symbol: 'rNFT',
+    uri: 'https://fazymvttg4pmy7ebypj67iadpiro3z6wxxzfwmmu7modia2ttwha.arweave.net/KDOGVnM3Hsx8gcPT76ADeiLt59a98lsxlPscNANTnY4/',
     mint_bump: NaN,
     mint_seed: ''
   }),
