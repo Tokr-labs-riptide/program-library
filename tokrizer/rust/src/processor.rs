@@ -24,8 +24,8 @@ use mpl_token_metadata::{
 };
 
 use mpl_token_vault::{
-    state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE}
-    // instruction::{create_},
+    state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE},
+    instruction::{create_update_external_price_account_instruction},
 };
 
 use spl_associated_token_account::{
@@ -131,7 +131,6 @@ pub fn tokrize(
         &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
     );
 
-    //msg!(("init mint");
     let result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
@@ -217,7 +216,17 @@ pub fn create_vault(
 
     let payer = next_account_info(accounts_iter)?;
 
+    let vault_key = next_account_info(accounts_iter)?;
+    
+    let vault_authority_key = next_account_info(accounts_iter)?;
+
     let external_pricing_key = next_account_info(accounts_iter)?;
+
+    let fraction_mint_key = next_account_info(accounts_iter)?;
+
+    let redeem_treasury_key = next_account_info(accounts_iter)?;
+
+    let fraction_treasury_key = next_account_info(accounts_iter)?;
 
     let token_vault_program = next_account_info(accounts_iter)?;
 
@@ -227,7 +236,9 @@ pub fn create_vault(
 
     let rent_key = next_account_info(accounts_iter)?;
 
-    let (external_pricing_pda, bump) = Pubkey::find_program_address(&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref()], &program_id);
+    let (external_pricing_pda, ebump) = Pubkey::find_program_address(&[b"external", vault_key.key.as_ref(), payer.key.as_ref()], &program_id);
+
+    let (fraction_mint_pda, fbump) = Pubkey::find_program_address(&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref()], &program_id);
 
 
     let rent = Rent {
@@ -244,7 +255,62 @@ pub fn create_vault(
             token_vault_program.key
         ),
         accounts,
-        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref(), &[bump]]]
+        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref(), &[ebump]]]
+    );
+
+    let _result = invoke_signed(
+        &create_update_external_price_account_instruction(
+            *token_vault_program.key,
+            *external_pricing_key.key, 
+            0 as u64, // todo price?
+            spl_token::native_mint::ID,
+            true
+        ),
+        accounts,
+        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref(), &[ebump]]]
+    );
+
+
+
+    let result = invoke_signed(
+        &system_instruction::create_account(
+            payer.key, 
+            fraction_mint_key.key, 
+            1461600 as u64, // wtf why does minimum balance give not enough
+            Mint::LEN as u64,
+            &spl_token::id()),
+        accounts,
+        &[&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref(), &[fbump]]]
+    );
+
+    let result = invoke_signed(
+        &initialize_mint(
+            &spl_token::id(),
+            fraction_mint_key.key, 
+            payer.key, 
+            Some(program_id), 
+            0
+        )?,
+        accounts,
+        &[&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref(), &[fbump]]]
+    );
+
+    let result = invoke(
+        &create_associated_token_account(
+            payer.key,
+            vault_authority_key.key,
+            &spl_token::native_mint::ID, 
+        ),
+        accounts
+    );
+
+    let result = invoke(
+        &create_associated_token_account(
+            payer.key,
+            vault_authority_key.key,
+            fraction_mint_key.key, 
+        ),
+        accounts,
     );
 
     Ok(())

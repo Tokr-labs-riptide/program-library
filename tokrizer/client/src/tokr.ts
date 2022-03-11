@@ -18,6 +18,9 @@ import path from 'path';
 import * as borsh from 'borsh';
 import {getPayer, getRpcUrl, createKeypairFromFile} from './utils';
 
+import { InitVault, Vault, VaultProgram } from '@metaplex-foundation/mpl-token-vault';
+
+
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" // devent
   // "ACvZk7eoncqw4AywLBk7DzpjRWXjwTL2tkfzYLZ4FhiG"  // localhost
@@ -196,7 +199,19 @@ export async function createVault(destination: PublicKey): Promise<void> {
     new VaultArgs()
   ));
 
-  const externalPricingAccountKey = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), programId.toBuffer()], programId))[0]
+  const vaultKey = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), programId.toBuffer()], programId))[0]
+
+  const vaultAuthority = await Vault.getPDA(vaultKey);
+
+  const externalPricingAccountKey = (await PublicKey.findProgramAddress([Buffer.from("external"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
+
+  const fractionMintkey = (await PublicKey.findProgramAddress([Buffer.from("fraction"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
+
+  const redeemTreasuryKey = (await PublicKey.findProgramAddress([Buffer.from("redeem"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
+
+  const fractionTreasuryKey = (await PublicKey.findProgramAddress([Buffer.from("treasury"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
+
+
 
   console.log("Creation External Pricing Account:", externalPricingAccountKey.toBase58());
 
@@ -204,7 +219,12 @@ export async function createVault(destination: PublicKey): Promise<void> {
     {
       keys: [
         {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
+        {pubkey: vaultKey, isSigner: false, isWritable: true}, 
+        {pubkey: vaultAuthority, isSigner: false, isWritable: true}, 
         {pubkey: externalPricingAccountKey, isSigner: false, isWritable: true}, 
+        {pubkey: fractionMintkey, isSigner: false, isWritable: true}, 
+        {pubkey: redeemTreasuryKey, isSigner: false, isWritable: true}, 
+        {pubkey: fractionTreasuryKey, isSigner: false, isWritable: true}, 
         {pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false},
         {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
         {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
