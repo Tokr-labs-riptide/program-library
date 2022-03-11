@@ -6,8 +6,9 @@ import {
   establishConnection,
   establishPayer,
   checkProgram,
-  runContract,
-  TokrizeArgs
+  mintNft,
+  TokrizeArgs,
+  createVault
 } from './tokr';
 
 
@@ -23,16 +24,20 @@ async function main() {
   // Check if the program has been deployed
   await checkProgram();
 
-  await runContract(new TokrizeArgs({
-    // name: 'smaABC',
-    // symbol: 'worlda',
-    // uri: 'www.gaasd.com'
-    name: 'This is an NFT',
-    symbol: 'rNFT',
-    uri: 'https://fazymvttg4pmy7ebypj67iadpiro3z6wxxzfwmmu7modia2ttwha.arweave.net/KDOGVnM3Hsx8gcPT76ADeiLt59a98lsxlPscNANTnY4/',
-    mint_bump: NaN,
-    mint_seed: ''
-  }),
+  // await mintNft(new TokrizeArgs({
+  //   // name: 'smaABC',
+  //   // symbol: 'worlda',
+  //   // uri: 'www.gaasd.com'
+  //   name: 'This is an NFT',
+  //   symbol: 'rNFT',
+  //   uri: 'https://fazymvttg4pmy7ebypj67iadpiro3z6wxxzfwmmu7modia2ttwha.arweave.net/KDOGVnM3Hsx8gcPT76ADeiLt59a98lsxlPscNANTnY4/',
+  //   mint_bump: NaN,
+  //   mint_seed: ''
+  // }),
+  // new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
+  // );
+
+  await createVault(
   new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
   );
 

@@ -11,6 +11,12 @@ pub struct MintArgs {
     pub mint_seed: String
 }
 
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct VaultArgs {
+    pub vault_bump: u8,
+    pub vault_seed: String
+}
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -23,5 +29,7 @@ pub struct FractionalizeArgs {
 pub enum TokrizerInstruction {
 
     MintTokrNft(MintArgs),
-    Fractionalize(FractionalizeArgs)
+    CreateVault(VaultArgs),
+    Fractionalize(FractionalizeArgs),
+
 }

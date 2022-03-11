@@ -23,6 +23,11 @@ use mpl_token_metadata::{
     state::Creator
 };
 
+use mpl_token_vault::{
+    state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction},
+};
+
 use spl_associated_token_account::{
     create_associated_token_account, get_associated_token_address
 };
@@ -39,12 +44,16 @@ pub fn process(
 
     match instruction {
         TokrizerInstruction::MintTokrNft(args) => {
-            msg!("Create NFT with Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
+            msg!("Mine NFT Instruction! Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
             tokrize(program_id, accounts, args.name, args.symbol, args.uri, args.mint_bump, args.mint_seed);
         }
         TokrizerInstruction::Fractionalize(args) => {
-            msg!("Fractionalize Nft. NumberOfShares: {}", args.number_of_shares);
+            msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
             fractionalize(program_id, accounts, args.number_of_shares);
+        }
+        TokrizerInstruction::CreateVault(args) => {
+            msg!("Create Vault Instruction!");
+            create_vault(program_id, accounts, args.vault_seed, args.vault_bump);
         }
     }
 
@@ -122,7 +131,6 @@ pub fn tokrize(
         &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
     );
 
-    //msg!(("init mint");
     let result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
@@ -158,15 +166,15 @@ pub fn tokrize(
         verified: true,
         share: 100 as u8
     };
-    //msg!(("create metadata account");
-    let result = invoke_signed(
+
+    let _result = invoke_signed(
         &create_metadata_accounts_v2(
             *metadata_program.key,
             metadata_key,
             *mint_input.key, 
             *payer.key, 
             *payer.key,
-            *payer.key,  //todo how to set program as update authority
+            *payer.key,
             name,
             symbol,
             uri,
@@ -174,14 +182,14 @@ pub fn tokrize(
             0,
             false,
             false,
-            None, //todo set collection???
+            None,
             None
         ),
         accounts,
         &[&[b"metadata", metadata_program.key.as_ref(), mint_input.key.as_ref(), &[metadata_bump]]]
     );
 
-    let result = invoke(
+    let _result = invoke(
         &mint_to(
             &spl_token::id(),
             mint_input.key,
@@ -195,6 +203,166 @@ pub fn tokrize(
 
 
     //msg!(("!!!");
+
+    Ok(())
+}
+
+pub fn create_vault(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    vault_seed: String,
+    vault_bump: u8,
+) -> ProgramResult {
+    // Iterating accounts is safer than indexing
+    let accounts_iter = &mut accounts.iter();
+
+    let payer = next_account_info(accounts_iter)?;
+
+    let vault = next_account_info(accounts_iter)?;
+    
+    let vault_authority = next_account_info(accounts_iter)?;
+
+    let external_pricing_acct = next_account_info(accounts_iter)?;
+
+    let fraction_mint = next_account_info(accounts_iter)?;
+
+    let redeem_treasury_ata = next_account_info(accounts_iter)?;
+
+    let fraction_treasury_ata = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    let token_program = next_account_info(accounts_iter)?;
+
+    let system_program = next_account_info(accounts_iter)?;
+
+    let rent_program = next_account_info(accounts_iter)?;
+
+    let _ata_program = next_account_info(accounts_iter)?;
+
+    let native_mint_program = next_account_info(accounts_iter)?;
+
+    let (_external_pricing_pda, ebump) = Pubkey::find_program_address(&[b"external", vault.key.as_ref(), payer.key.as_ref()], &program_id);
+
+    let (_fraction_mint_pda, fbump) = Pubkey::find_program_address(&[b"fraction", vault.key.as_ref(), payer.key.as_ref()], &program_id);
+
+
+    // let rent = Rent {
+    //     lamports_per_byte_year: 82, // todo why does 42 not work grr
+    //     ..Rent::default()
+    // };
+
+    let _result = invoke_signed(
+        &system_instruction::create_account(
+            payer.key, 
+            external_pricing_acct.key, 
+            // rent.minimum_balance(MAX_EXTERNAL_ACCOUNT_SIZE),
+            1183200 as u64,
+            MAX_EXTERNAL_ACCOUNT_SIZE as u64,
+            token_vault_program.key
+        ),
+        accounts,
+        &[&[b"external", vault.key.as_ref(), payer.key.as_ref(), &[ebump]]]
+    );
+
+    let _result = invoke_signed(
+        &create_update_external_price_account_instruction(
+            *token_vault_program.key,
+            *external_pricing_acct.key, 
+            0 as u64, // todo price?
+            spl_token::native_mint::ID,
+            true
+        ),
+        accounts,
+        &[&[b"external", vault.key.as_ref(), payer.key.as_ref(), &[ebump]]]
+    );
+
+    let _result = invoke_signed(
+        &system_instruction::create_account(
+            payer.key, 
+            fraction_mint.key, 
+            1461600 as u64, // wtf why does minimum balance give not enough
+            Mint::LEN as u64,
+            &spl_token::id()),
+        accounts,
+        &[&[b"fraction", vault.key.as_ref(), payer.key.as_ref(), &[fbump]]]
+    );
+
+    let _result = invoke_signed(
+        &initialize_mint(
+            &spl_token::id(),
+            fraction_mint.key, 
+            vault_authority.key, 
+            Some(vault_authority.key), 
+            0
+        )?,
+        accounts,
+        &[&[b"fraction", vault.key.as_ref(), payer.key.as_ref(), &[fbump]]]
+    );
+
+    let _result = invoke(
+        &create_associated_token_account(
+            payer.key,
+            vault_authority.key,
+            &spl_token::native_mint::ID, 
+        ),
+        &[
+            payer.clone(), 
+            redeem_treasury_ata.clone(), 
+            vault_authority.clone(),
+            native_mint_program.clone(), 
+            system_program.clone(), 
+            token_program.clone(), 
+            rent_program.clone()
+        ]
+    );
+
+    let _result = invoke(
+        &create_associated_token_account(
+            payer.key,
+            vault_authority.key,
+            fraction_mint.key, 
+        ),
+        &[
+            payer.clone(), 
+            fraction_treasury_ata.clone(), 
+            vault_authority.clone(),
+            fraction_mint.clone(), 
+            system_program.clone(), 
+            token_program.clone(), 
+            rent_program.clone()
+        ]
+    );
+
+    let _result = invoke_signed(
+        &system_instruction::create_account(
+            payer.key, 
+            vault.key, 
+            //rent.minimum_balance(MAX_VAULT_SIZE),// why does this not work?
+            2317680 as u64,
+            MAX_VAULT_SIZE as u64,
+            token_vault_program.key
+        ),
+        accounts,
+        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), vault_seed.as_ref(), &[vault_bump]]]
+    );
+
+    msg!("WHAT");
+
+    let _result = invoke_signed(
+        &create_init_vault_instruction(
+            *token_vault_program.key,
+            *fraction_mint.key,
+            *redeem_treasury_ata.key,
+            *fraction_treasury_ata.key,
+            *vault.key, 
+            *vault_authority.key,
+            *external_pricing_acct.key,
+            true
+        ),
+        accounts,
+        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), vault_seed.as_ref(), &[vault_bump]]]
+    );
 
     Ok(())
 }
