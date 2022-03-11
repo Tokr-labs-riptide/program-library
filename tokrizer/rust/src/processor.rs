@@ -234,11 +234,15 @@ pub fn create_vault(
 
     let system_program = next_account_info(accounts_iter)?;
 
-    let rent_key = next_account_info(accounts_iter)?;
+    let rent_program = next_account_info(accounts_iter)?;
 
-    let (external_pricing_pda, ebump) = Pubkey::find_program_address(&[b"external", vault_key.key.as_ref(), payer.key.as_ref()], &program_id);
+    let _ata_program = next_account_info(accounts_iter)?;
 
-    let (fraction_mint_pda, fbump) = Pubkey::find_program_address(&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref()], &program_id);
+    let native_mint_program = next_account_info(accounts_iter)?;
+
+    let (_external_pricing_pda, ebump) = Pubkey::find_program_address(&[b"external", vault_key.key.as_ref(), payer.key.as_ref()], &program_id);
+
+    let (_fraction_mint_pda, fbump) = Pubkey::find_program_address(&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref()], &program_id);
 
 
     let rent = Rent {
@@ -255,7 +259,7 @@ pub fn create_vault(
             token_vault_program.key
         ),
         accounts,
-        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref(), &[ebump]]]
+        &[&[b"external", vault_key.key.as_ref(), payer.key.as_ref(), &[ebump]]]
     );
 
     let _result = invoke_signed(
@@ -267,12 +271,11 @@ pub fn create_vault(
             true
         ),
         accounts,
-        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref(), &[ebump]]]
+        &[&[b"external", vault_key.key.as_ref(), payer.key.as_ref(), &[ebump]]]
     );
 
-
-
-    let result = invoke_signed(
+    msg!("init mint");
+    let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
             fraction_mint_key.key, 
@@ -283,7 +286,7 @@ pub fn create_vault(
         &[&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref(), &[fbump]]]
     );
 
-    let result = invoke_signed(
+    let _result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
             fraction_mint_key.key, 
@@ -295,22 +298,40 @@ pub fn create_vault(
         &[&[b"fraction", vault_key.key.as_ref(), payer.key.as_ref(), &[fbump]]]
     );
 
+    msg!("redeem treasury, {}, {}, {}",payer.key, vault_authority_key.key, &spl_token::native_mint::ID);
     let result = invoke(
         &create_associated_token_account(
             payer.key,
             vault_authority_key.key,
             &spl_token::native_mint::ID, 
         ),
-        accounts
+        &[
+            payer.clone(), 
+            redeem_treasury_key.clone(), 
+            vault_authority_key.clone(),
+            native_mint_program.clone(), 
+            system_program.clone(), 
+            token_program.clone(), 
+            rent_program.clone()
+        ]
     );
 
+    msg!("fraction treasury");
     let result = invoke(
         &create_associated_token_account(
             payer.key,
             vault_authority_key.key,
             fraction_mint_key.key, 
         ),
-        accounts,
+        &[
+            payer.clone(), 
+            fraction_treasury_key.clone(), 
+            vault_authority_key.clone(),
+            fraction_mint_key.clone(), 
+            system_program.clone(), 
+            token_program.clone(), 
+            rent_program.clone()
+        ]
     );
 
     Ok(())

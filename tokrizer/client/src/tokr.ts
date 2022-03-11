@@ -12,7 +12,7 @@ import {
   Transaction,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT } from '@solana/spl-token';
 import fs from 'mz/fs';
 import path from 'path';
 import * as borsh from 'borsh';
@@ -207,13 +207,17 @@ export async function createVault(destination: PublicKey): Promise<void> {
 
   const fractionMintkey = (await PublicKey.findProgramAddress([Buffer.from("fraction"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
 
-  const redeemTreasuryKey = (await PublicKey.findProgramAddress([Buffer.from("redeem"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
+  const redeemTreasuryKey = (await PublicKey.findProgramAddress([vaultAuthority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), NATIVE_MINT.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
-  const fractionTreasuryKey = (await PublicKey.findProgramAddress([Buffer.from("treasury"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
+  const fractionTreasuryKey = (await PublicKey.findProgramAddress([vaultAuthority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), fractionMintkey.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
+  console.log("vaultKey:", vaultKey.toBase58());
+  console.log("vaultAuthority:", vaultAuthority.toBase58());
+  console.log("externalPricingAccountKey:", externalPricingAccountKey.toBase58());
+  console.log("fractionMintkey:", fractionMintkey.toBase58());
+  console.log("redeemTreasuryKey:", redeemTreasuryKey.toBase58());
+  console.log("fractionTreasuryKey:", fractionTreasuryKey.toBase58());
 
-
-  console.log("Creation External Pricing Account:", externalPricingAccountKey.toBase58());
 
   const instruction = new TransactionInstruction(
     {
@@ -230,6 +234,7 @@ export async function createVault(destination: PublicKey): Promise<void> {
         {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
         {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
         {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: NATIVE_MINT, isSigner: false, isWritable: false},
       ],
       programId,
       data: data
