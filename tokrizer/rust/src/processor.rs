@@ -23,6 +23,11 @@ use mpl_token_metadata::{
     state::Creator
 };
 
+use mpl_token_vault::{
+    state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE}
+    // instruction::{create_},
+};
+
 use spl_associated_token_account::{
     create_associated_token_account, get_associated_token_address
 };
@@ -46,8 +51,8 @@ pub fn process(
             msg!("Fractionalize Nft. NumberOfShares: {}", args.number_of_shares);
             fractionalize(program_id, accounts, args.number_of_shares);
         }
-        TokrizerInstruction::CreateVault(args) => {
-            msg!("Create Vautlt");
+        TokrizerInstruction::CreateVault => {
+            msg!("Create Vault");
             create_vault(program_id, accounts);
         }
     }
@@ -207,6 +212,40 @@ pub fn create_vault(
     program_id: &Pubkey,
     accounts: &[AccountInfo]
 ) -> ProgramResult {
+    // Iterating accounts is safer than indexing
+    let accounts_iter = &mut accounts.iter();
+
+    let payer = next_account_info(accounts_iter)?;
+
+    let external_pricing_key = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    let token_program = next_account_info(accounts_iter)?;
+
+    let system_program = next_account_info(accounts_iter)?;
+
+    let rent_key = next_account_info(accounts_iter)?;
+
+    let (external_pricing_pda, bump) = Pubkey::find_program_address(&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref()], &program_id);
+
+
+    let rent = Rent {
+        lamports_per_byte_year: 42,
+        ..Rent::default()
+    };
+
+    let _result = invoke_signed(
+        &system_instruction::create_account(
+            payer.key, 
+            external_pricing_key.key, 
+            rent.minimum_balance(MAX_EXTERNAL_ACCOUNT_SIZE),
+            MAX_EXTERNAL_ACCOUNT_SIZE as u64,
+            token_vault_program.key
+        ),
+        accounts,
+        &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), program_id.as_ref(), &[bump]]]
+    );
 
     Ok(())
 }

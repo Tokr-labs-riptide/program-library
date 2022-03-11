@@ -23,5 +23,7 @@ pub struct FractionalizeArgs {
 pub enum TokrizerInstruction {
 
     MintTokrNft(MintArgs),
-    Fractionalize(FractionalizeArgs)
+    CreateVault,
+    Fractionalize(FractionalizeArgs),
+
 }

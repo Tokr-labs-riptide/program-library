@@ -23,6 +23,11 @@ const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   // "ACvZk7eoncqw4AywLBk7DzpjRWXjwTL2tkfzYLZ4FhiG"  // localhost
 );
 
+const TOKEN_VAULT_PROGRAM_ID = new PublicKey(
+  "vau1zxA2LbssAUEF7Gpw91zMM1LvXrvpzJtmZ58rPsn" // devent
+  // "ACvZk7eoncqw4AywLBk7DzpjRWXjwTL2tkfzYLZ4FhiG"  // localhost
+);
+
 
 
 /**
@@ -172,7 +177,55 @@ const TokrizeSchema = new Map([
 ]);
 
 
-export async function runContract(args: TokrizeArgs, destination: PublicKey): Promise<void> {
+export class VaultArgs {
+  instruction = 1;
+}
+
+const VaultSchema = new Map([
+  [VaultArgs, {
+    kind: 'struct', 
+    fields: [
+      ['instruction', 'u8'],
+    ]}],
+]);
+
+export async function createVault(destination: PublicKey): Promise<void> {
+
+  const data = Buffer.from(borsh.serialize(
+    VaultSchema,
+    new VaultArgs()
+  ));
+
+  const externalPricingAccountKey = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), programId.toBuffer()], programId))[0]
+
+  console.log("Creation External Pricing Account:", externalPricingAccountKey.toBase58());
+
+  const instruction = new TransactionInstruction(
+    {
+      keys: [
+        {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
+        {pubkey: externalPricingAccountKey, isSigner: false, isWritable: true}, 
+        {pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+        {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+        {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+      ],
+      programId,
+      data: data
+    }
+  );
+
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer],
+  );
+
+  console.log("Transaction id:", tx);
+}
+
+export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
 
   let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
