@@ -182,6 +182,14 @@ const TokrizeSchema = new Map([
 
 export class VaultArgs {
   instruction = 1;
+  vault_bump: number;
+  vault_seed: string;
+  constructor(fields: {vault_bump: number, vault_seed: string} | undefined = undefined) {
+    if (fields) {
+      this.vault_bump = fields.vault_bump;
+      this.vault_seed = fields.vault_seed;
+    }
+  }
 }
 
 const VaultSchema = new Map([
@@ -189,18 +197,28 @@ const VaultSchema = new Map([
     kind: 'struct', 
     fields: [
       ['instruction', 'u8'],
+      ['vault_bump', 'u8'],
+      ['vault_seed', 'string']
     ]}],
 ]);
 
 export async function createVault(destination: PublicKey): Promise<void> {
 
+  let vaultSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
+
+  const vaultPda = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), Buffer.from(vaultSeed)], programId))
+  const vaultKey = vaultPda[0]
+  const vaultBump = vaultPda[1]
+
   const data = Buffer.from(borsh.serialize(
     VaultSchema,
-    new VaultArgs()
+    new VaultArgs({vault_bump: vaultBump, vault_seed: vaultSeed})
   ));
 
-  const vaultKey = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), programId.toBuffer()], programId))[0]
+  console.log("MAX RENT:" + await connection.getMinimumBalanceForRentExemption(Vault.MAX_VAULT_SIZE));
 
+  // const vaultAuthority = (await PublicKey.findProgramAddress([Buffer.from("vault"), TOKEN_VAULT_PROGRAM_ID.toBuffer(), vaultKey.toBuffer()], programId))[0]
+  
   const vaultAuthority = await Vault.getPDA(vaultKey);
 
   const externalPricingAccountKey = (await PublicKey.findProgramAddress([Buffer.from("external"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
