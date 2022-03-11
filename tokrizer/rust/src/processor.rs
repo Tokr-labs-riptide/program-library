@@ -46,6 +46,10 @@ pub fn process(
             msg!("Fractionalize Nft. NumberOfShares: {}", args.number_of_shares);
             fractionalize(program_id, accounts, args.number_of_shares);
         }
+        TokrizerInstruction::CreateVault(args) => {
+            msg!("Create Vautlt");
+            create_vault(program_id, accounts);
+        }
     }
 
     Ok(())
@@ -158,15 +162,15 @@ pub fn tokrize(
         verified: true,
         share: 100 as u8
     };
-    //msg!(("create metadata account");
-    let result = invoke_signed(
+
+    let _result = invoke_signed(
         &create_metadata_accounts_v2(
             *metadata_program.key,
             metadata_key,
             *mint_input.key, 
             *payer.key, 
             *payer.key,
-            *payer.key,  //todo how to set program as update authority
+            *payer.key,
             name,
             symbol,
             uri,
@@ -174,14 +178,14 @@ pub fn tokrize(
             0,
             false,
             false,
-            None, //todo set collection???
+            None,
             None
         ),
         accounts,
         &[&[b"metadata", metadata_program.key.as_ref(), mint_input.key.as_ref(), &[metadata_bump]]]
     );
 
-    let result = invoke(
+    let _result = invoke(
         &mint_to(
             &spl_token::id(),
             mint_input.key,
@@ -195,6 +199,14 @@ pub fn tokrize(
 
 
     //msg!(("!!!");
+
+    Ok(())
+}
+
+pub fn create_vault(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo]
+) -> ProgramResult {
 
     Ok(())
 }

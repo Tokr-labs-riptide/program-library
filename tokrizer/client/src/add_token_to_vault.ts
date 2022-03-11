@@ -50,6 +50,7 @@ export async function addToVault(): Promise<void> {
 
     console.log(`Confirming tx ${txId2}`)
     await connection.confirmTransaction(txId2);
+    
     // Add token to vault
     const tokenAccount = await findAssociatedTokenAddress(payer.publicKey, tokenAddress);
 
