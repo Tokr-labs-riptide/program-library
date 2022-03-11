@@ -356,7 +356,7 @@ pub fn create_vault(
             *redeem_treasury_ata.key,
             *fraction_treasury_ata.key,
             *vault.key, 
-            *vault_authority.key,
+            *payer.key,  //todo make this the DAO?
             *external_pricing_acct.key,
             true
         ),
