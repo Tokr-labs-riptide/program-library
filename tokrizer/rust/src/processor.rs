@@ -347,7 +347,6 @@ pub fn create_vault(
         &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), vault_seed.as_ref(), &[vault_bump]]]
     );
 
-    msg!("WHAT");
 
     let _result = invoke_signed(
         &create_init_vault_instruction(
