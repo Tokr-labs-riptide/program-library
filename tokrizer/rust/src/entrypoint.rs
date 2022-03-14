@@ -1,6 +1,7 @@
 #![cfg(all(target_arch = "bpf", not(feature = "no-entrypoint")))]
 
 use solana_program::{
+    msg,
     account_info::AccountInfo, entrypoint, entrypoint::ProgramResult, pubkey::Pubkey,
 };
 
@@ -12,5 +13,10 @@ fn process_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    processor::process(program_id, accounts, instruction_data)
+    if let Err(error) = processor::process(program_id, accounts, instruction_data) {
+        msg!("Error! {}", error);
+        return Err(error);
+    }
+
+    Ok(())
 }

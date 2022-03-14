@@ -8,7 +8,8 @@ import {
   checkProgram,
   mintNft,
   TokrizeArgs,
-  createVault
+  createVault,
+  addTokenToVault
 } from './tokr';
 
 
@@ -37,8 +38,11 @@ async function main() {
   // new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
   // );
 
-  await createVault(
-  new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
+  // await createVault();
+
+  await addTokenToVault(
+    new PublicKey("38iBTkk3wvNyHAH3VCh4tw6BgK2DtkrcrpYpJKqeahJM"),
+    new PublicKey("3jZjTFU8YCktnrCmWE45VhmU3b3VpuojjaFJwwJBZQa9"),
   );
 
   console.log('Success');

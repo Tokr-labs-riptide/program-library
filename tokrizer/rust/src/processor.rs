@@ -4,7 +4,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed},
+    program::{invoke, invoke_signed, invoke_signed_unchecked},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     sysvar::{rent::Rent, Sysvar},
@@ -13,7 +13,7 @@ use solana_program::{
 };
 use spl_token::{
     self,
-    instruction::{initialize_mint, mint_to},
+    instruction::{initialize_mint, mint_to, approve, revoke},
     state::Mint
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -25,7 +25,7 @@ use mpl_token_metadata::{
 
 use mpl_token_vault::{
     state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_add_token_to_inactive_vault_instruction},
 };
 
 use spl_associated_token_account::{
@@ -47,13 +47,17 @@ pub fn process(
             msg!("Mine NFT Instruction! Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
             tokrize(program_id, accounts, args.name, args.symbol, args.uri, args.mint_bump, args.mint_seed);
         }
-        TokrizerInstruction::Fractionalize(args) => {
-            msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
-            fractionalize(program_id, accounts, args.number_of_shares);
-        }
         TokrizerInstruction::CreateVault(args) => {
             msg!("Create Vault Instruction!");
             create_vault(program_id, accounts, args.vault_seed, args.vault_bump);
+        }
+        TokrizerInstruction::AddNftToVault(args) => {
+            msg!("Add NFT To Vault Instruction!");
+            add_nft_to_vault(program_id, accounts, args.vault_seed, args.vault_bump);
+        }
+        TokrizerInstruction::Fractionalize(args) => {
+            msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
+            fractionalize(program_id, accounts, args.number_of_shares);
         }
     }
 
@@ -366,12 +370,123 @@ pub fn create_vault(
     Ok(())
 }
 
+pub fn add_nft_to_vault(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    vault_seed: String,
+    vault_bump: u8,
+) -> ProgramResult {
+
+    // Iterating accounts is safer than indexing
+    let accounts_iter = &mut accounts.iter();
+
+    let payer = next_account_info(accounts_iter)?;
+
+    let token = next_account_info(accounts_iter)?;
+
+    let token_ata = next_account_info(accounts_iter)?;
+
+    let transfer_authority = next_account_info(accounts_iter)?;
+
+    let vault = next_account_info(accounts_iter)?;
+
+    let vault_authority = next_account_info(accounts_iter)?;
+
+    let vault_authority_ata = next_account_info(accounts_iter)?;
+
+    let safety_deposit_box = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    let token_program = next_account_info(accounts_iter)?;
+
+    let system_program = next_account_info(accounts_iter)?;
+
+    let rent_program = next_account_info(accounts_iter)?;
+
+    let _ata_program = next_account_info(accounts_iter)?;
+
+    let (vault_auth_pda, vault_auth_bump) = Pubkey::find_program_address(&[b"vault", token_vault_program.key.as_ref(), vault.key.as_ref()], &token_vault_program.key);
+
+    let (vault_ata_pda, vault_ata_bump) = Pubkey::find_program_address(&[b"vault", token_vault_program.key.as_ref(), vault.key.as_ref()], &token_vault_program.key);
+
+
+    msg!("Create ata");
+
+    let _result = invoke(
+        &create_associated_token_account(
+            payer.key,
+            vault_authority.key,
+            token.key, 
+        ),
+        &[
+            payer.clone(), 
+            vault_authority_ata.clone(), 
+            vault_authority.clone(),
+            token.clone(), 
+            system_program.clone(), 
+            token_program.clone(), 
+            rent_program.clone()
+        ]
+    );
+
+    msg!("Approve");
+
+    let _result = invoke(
+        &approve(
+            token_program.key, 
+            token_ata.key, 
+            transfer_authority.key,  // todo is the payer of the authority 
+            payer.key,  // todo change to treasury
+            &[], 
+            1 as u64
+        ).unwrap(),
+        accounts
+    );
+
+    msg!("Revoke");
+    
+    let _result = invoke(
+        &revoke(
+            token_program.key, 
+            token_ata.key, 
+            payer.key,  // todo this should be the treasury?
+            &[]
+        ).unwrap(),
+        accounts
+    );
+
+    msg!("Add to Vault: {}", vault_auth_pda);
+
+    let _result = invoke_signed_unchecked(
+        &create_add_token_to_inactive_vault_instruction(
+            *token_vault_program.key,
+            *safety_deposit_box.key, 
+            *token_ata.key, 
+            *vault_authority_ata.key, 
+            *vault.key, 
+            *vault_authority.key, 
+            *payer.key,
+            *transfer_authority.key, 
+            1 as u64,
+        ),
+        accounts,
+        &[
+            // &[vault.key.as_ref(), token.key.as_ref(), token_vault_program.key.as_ref(), &[vault_bump]],
+            &[b"vault", token_vault_program.key.as_ref(), vault.key.as_ref(), &[vault_auth_bump]],
+        ]
+    );
+
+
+    Ok(())
+}
 
 pub fn fractionalize(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     number_of_shares: u64
 ) -> ProgramResult {
+
 
     Ok(())
 }
