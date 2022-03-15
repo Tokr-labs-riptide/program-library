@@ -59,13 +59,13 @@ const PROGRAM_PATH = path.resolve(__dirname, '../../rust/target/deploy');
  *   - `npm run build:program-c`
  *   - `npm run build:program-rust`
  */
-const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'nftminter.so');
+const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'tokrizer.so');
 
 /**
  * Path to the keypair of the deployed program.
  * This file is created when running `solana program deploy dist/program/helloworld.so`
  */
-const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'nftminter-keypair.json');
+const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'tokrizer-keypair.json');
 
 /**
  * Establish a connection to the cluster

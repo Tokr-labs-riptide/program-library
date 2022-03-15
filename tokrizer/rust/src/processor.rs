@@ -15,7 +15,6 @@ use spl_token::{
     state::{Mint, Account}
 };
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::str::FromStr;
 use mpl_token_metadata::{
     instruction::{create_metadata_accounts_v2},
     state::Creator

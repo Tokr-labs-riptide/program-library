@@ -1,6 +1,6 @@
 
 [package]
-name = "tokr-nft-minter"
+name = "tokrizer"
 version = "0.0.1"
 repository = "https://github.com/TOKR-labs/program-library"
 license = ""
@@ -23,7 +23,7 @@ solana-sdk = "1.9.5"
 solana-program-test = "1.9.5"
 
 [lib]
-name = "nftminter"
+name = "tokrizer"
 crate-type = ["cdylib", "lib"]
 
 [net]

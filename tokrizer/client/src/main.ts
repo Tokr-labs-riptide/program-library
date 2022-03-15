@@ -37,12 +37,12 @@ async function main() {
   //   new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums")
   // );
 
-  // await createVault();
+  await createVault();
 
-  await addTokenToVault(
-    new PublicKey("2M4ptc4LAEBHf4F6b2FjeYJfJbQHuFrC1BWwUykrjdz3"), // vault address 
-    new PublicKey("3jZjTFU8YCktnrCmWE45VhmU3b3VpuojjaFJwwJBZQa9"), // token address
-  );
+  // await addTokenToVault(
+  //   new PublicKey("2M4ptc4LAEBHf4F6b2FjeYJfJbQHuFrC1BWwUykrjdz3"), // vault address 
+  //   new PublicKey("3jZjTFU8YCktnrCmWE45VhmU3b3VpuojjaFJwwJBZQa9"), // token address
+  // );
 
   console.log('Success');
 }

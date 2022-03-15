@@ -2866,7 +2866,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokr-nft-minter"
+name = "tokrizer"
 version = "0.0.1"
 dependencies = [
  "borsh",
