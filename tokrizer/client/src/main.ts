@@ -41,7 +41,7 @@ async function main() {
 
   await addTokenToVault(
     new PublicKey("2M4ptc4LAEBHf4F6b2FjeYJfJbQHuFrC1BWwUykrjdz3"), // vault address 
-    new PublicKey("Ai3oeMzCyU793bzqwK7yVyoFkz7o6CgMJVGuswUbtq2Y"), // token address
+    new PublicKey("3jZjTFU8YCktnrCmWE45VhmU3b3VpuojjaFJwwJBZQa9"), // token address
   );
 
   console.log('Success');

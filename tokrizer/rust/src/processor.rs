@@ -385,14 +385,19 @@ pub fn add_nft_to_vault(
 
     let _ata_program = next_account_info(accounts_iter)?;
 
-    let _result = invoke(
+    let (_transfer_authority_pda, transfer_bump) = Pubkey::find_program_address(&[b"transfer", vault.key.as_ref(), token.key.as_ref()], &program_id);
+
+    let (_store_pda, store_bump) = Pubkey::find_program_address(&[b"store", vault.key.as_ref(), token.key.as_ref()], &program_id);
+
+    let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
             token_store.key, 
             2039280 as u64, // wtf why does minimum balance give not enough
             Account::LEN as u64,
             &spl_token::id()),
-        accounts
+        accounts,
+        &[&[b"store", vault.key.as_ref(), token.key.as_ref(), &[store_bump]]]
     );
 
     let _result = invoke(
@@ -417,7 +422,7 @@ pub fn add_nft_to_vault(
         accounts
     );
 
-    let _result = invoke(
+    let _result = invoke_signed(
         &create_add_token_to_inactive_vault_instruction2(
             *token_vault_program.key,
             *safety_deposit_box.key, 
@@ -441,6 +446,10 @@ pub fn add_nft_to_vault(
             token_program.clone(),
             system_program.clone(),
             rent_program.clone(),
+        ],
+        &[
+            &[b"transfer", vault.key.as_ref(), token.key.as_ref(), &[transfer_bump]],
+            &[b"store", vault.key.as_ref(), token.key.as_ref(), &[store_bump]],
         ]
     );
 
