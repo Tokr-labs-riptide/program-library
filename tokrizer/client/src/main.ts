@@ -1,18 +1,16 @@
 /**
  * Hello world
  */
- import {PublicKey} from '@solana/web3.js';
+import {PublicKey} from '@solana/web3.js';
 import {
   establishConnection,
   establishPayer,
   checkProgram,
+  addTokenToVault,
   mintNft,
-  TokrizeArgs,
   createVault,
-  addTokenToVault
+  TokrizeArgs
 } from './tokr';
-import { InitVault, Vault, VaultProgram, SafetyDepositBox } from '@metaplex-foundation/mpl-token-vault';
-
 
 async function main() {
   console.log("Let's say hello to a Solana account...");
@@ -36,19 +34,14 @@ async function main() {
   //   mint_bump: NaN,
   //   mint_seed: ''
   // }),
-  // new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
+  //   new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums")
   // );
 
   // await createVault();
-  // let tokenAddress = new PublicKey("5XfvXXr7vmcubdRSdus5Qoc7dqLYPN6zB2TXprTAX31p")
-  // let vaultAddress = new PublicKey("7bt2xPtX9RZFzwHKt2xRAf2ANPvAE7cti77bVSaGKgEm")
-  // const vaultAuthority = await Vault.getPDA(vaultAddress);
-  // const safetyDepositBox = await SafetyDepositBox.getPDA(vaultAddress, tokenAddress);
-  // console.log("Vault Authority ", vaultAuthority.toBase58())
-  // console.log("safetyDepositBox ", safetyDepositBox.toBase58())
+
   await addTokenToVault(
-    new PublicKey("3JFnHtFBUrfktYSTc6Xpzkw5sZtzuVFpdf4DC5D5AWKj"), // vault address 
-    new PublicKey("EGrjqWEKnwgLyVumbxAE62qzdBRTnoqnTzkkBCrvTrKv"), // token address
+    new PublicKey("2M4ptc4LAEBHf4F6b2FjeYJfJbQHuFrC1BWwUykrjdz3"), // vault address 
+    new PublicKey("Ai3oeMzCyU793bzqwK7yVyoFkz7o6CgMJVGuswUbtq2Y"), // token address
   );
 
   console.log('Success');

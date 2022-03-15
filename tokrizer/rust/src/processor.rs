@@ -117,7 +117,7 @@ pub fn tokrize(
             Mint::LEN as u64,
             &spl_token::id()),
         accounts,
-        &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
+        &[&[mint_seed.as_bytes(), payer.key.as_ref(), destination.key.as_ref(), &[mint_bump]]]
     );
 
     let _result = invoke_signed(
@@ -129,7 +129,7 @@ pub fn tokrize(
             0
         )?,
         accounts,
-        &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
+        &[&[mint_seed.as_bytes(), payer.key.as_ref(), destination.key.as_ref(), &[mint_bump]]]
     );
 
     let _result = invoke(

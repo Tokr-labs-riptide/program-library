@@ -228,11 +228,9 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
   console.log('Payer: ', payer.publicKey.toBase58());
 
 
-  const vaultAuthority1 = (await PublicKey.findProgramAddress([Buffer.from("vault"), TOKEN_VAULT_PROGRAM_ID.toBuffer(), vaultAddress.toBuffer()], TOKEN_VAULT_PROGRAM_ID))[0]
   const vaultAuthority = await Vault.getPDA(vaultAddress);
   const safetyDepositBox = await SafetyDepositBox.getPDA(vaultAddress, tokenAddress);
   const transferAuthority = Keypair.generate() // todo use PDA
-  // const [transferAuthorityKey, transferAuthorityBump] = (await PublicKey.findProgramAddress([vaultAddress.toBuffer(), tokenAddress.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer()], programId));
 
 
   const tokenAta = await getTokenWallet(payer.publicKey, tokenAddress); // todo replace with treasury
@@ -242,7 +240,6 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
   console.log("tokenAta: ", tokenAta.toBase58());
   console.log("vault: ", vaultAddress.toBase58());
   console.log("vaultAuthority: ", vaultAuthority.toBase58());
-  console.log("vaultAuthority1: ", vaultAuthority1.toBase58());
   console.log("vaultAuthorityAta: ", vaultAuthorityAta.toBase58());
   console.log("safetyDepositBox: ", safetyDepositBox.toBase58());
   console.log("transferAuthority: ", transferAuthority.publicKey.toBase58());
@@ -251,10 +248,6 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
     AddTokenSchema,
     new AddTokenArgs({vault_bump:254, vault_seed:"0qn4mac9qn2eqqt5alwb"})
   ));
-
-  const kp = Keypair.generate();
-  console.log("new kp, public: ", kp.publicKey.toBase58());
-  console.log("new kp, private: ", kp.secretKey);
 
   const instruction = new TransactionInstruction(
     {
@@ -305,8 +298,6 @@ export async function createVault(): Promise<void> {
   ));
 
   console.log("MAX RENT:" + await connection.getMinimumBalanceForRentExemption(Vault.MAX_VAULT_SIZE));
-
-  // const vaultAuthority = (await PublicKey.findProgramAddress([Buffer.from("vault"), TOKEN_VAULT_PROGRAM_ID.toBuffer(), vaultKey.toBuffer()], programId))[0]
   
   const vaultAuthority = await Vault.getPDA(vaultKey);
 
@@ -361,9 +352,9 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
   console.log('Payer: ', payer.publicKey.toBase58());
 
   let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
-  console.log("random", mintSeed);
+  console.log("random seed", mintSeed);
   args.mint_seed = mintSeed;
-  let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), programId.toBuffer()], programId));
+  let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
   const mintAccount = pda[0]
   args.mint_bump = pda[1]
 
