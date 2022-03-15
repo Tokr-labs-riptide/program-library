@@ -15,7 +15,7 @@ import {
 import * as borsh from 'borsh';
 import * as metaplex from "@metaplex/js";
 import {createAddTokenToInactiveVaultInstruction, AddTokenToInactiveVaultInstructionArgs} from './instructions/AddTokenToInactiveVault'
-import { getPayer, getRpcUrl} from './utils';
+import { getPayer, getRpcUrl} from '../utils';
 import { AccountLayout, Token, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BN } from '@project-serum/anchor';
 import { InitVault, Vault, VaultProgram, SafetyDepositBox } from '@metaplex-foundation/mpl-token-vault';

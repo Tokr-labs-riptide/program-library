@@ -6,7 +6,7 @@ import {
     PublicKey,
 } from '@solana/web3.js';
 import * as metaplex from "@metaplex/js";
-import { getPayer, getRpcUrl} from './utils';
+import { getPayer, getRpcUrl} from '../utils';
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BN } from '@project-serum/anchor';
 

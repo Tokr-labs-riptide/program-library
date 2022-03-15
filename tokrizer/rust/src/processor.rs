@@ -1,13 +1,11 @@
 use solana_program::{
-    rent,
     instruction::{AccountMeta, Instruction},
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed, invoke_signed_unchecked},
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-    sysvar::{self, rent::Rent, Sysvar},
+    program::{invoke, invoke_signed},
+    program_pack::{Pack},
+    sysvar::{self},
     pubkey::{Pubkey},
     system_instruction
 };
@@ -25,7 +23,7 @@ use mpl_token_metadata::{
 
 use mpl_token_vault::{
     state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_add_token_to_inactive_vault_instruction, VaultInstruction, AmountArgs},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, VaultInstruction, AmountArgs},
 };
 
 use spl_associated_token_account::{
@@ -78,42 +76,30 @@ pub fn tokrize(
     let accounts_iter = &mut accounts.iter();
 
     let payer = next_account_info(accounts_iter)?;
-    //msg!(("payer: {} ", payer.key);
 
     let destination = next_account_info(accounts_iter)?;
-    //msg!(("payer: {} ", payer.key);
 
     let creator = next_account_info(accounts_iter)?;
-    //msg!(("payer: {} ", payer.key);
 
     let mint_input = next_account_info(accounts_iter)?;
-    //msg!(("mint_input: {} ", mint_input.key);
 
     let metadata_acct = next_account_info(accounts_iter)?;
-    //msg!(("metadata_acct: {} ", metadata_acct.key);
 
     let token_ata_input = next_account_info(accounts_iter)?;
-    //msg!(("token_ata_input: {} ", token_ata_input.key);
 
     let token_program = next_account_info(accounts_iter)?;
-    //msg!(("token_program: {} ", token_program.key);
 
     let metadata_program = next_account_info(accounts_iter)?;
-    //msg!(("metadata_program: {} ", metadata_program.key);
 
     let system_program = next_account_info(accounts_iter)?;
-    //msg!(("system_program: {} ", system_program.key);
 
     let rent_key = next_account_info(accounts_iter)?;
-    //msg!(("rent_key: {} ", rent_key.key);
 
     // todo check if mint input is correct
-    // let (mint_key, mint_bump) = Pubkey::find_program_address(&[payer.key.as_ref(), uri.as_bytes(), program_id.as_ref()], &program_id);
     msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
 
     // todo check if metadata input is correct
     let (metadata_key, metadata_bump) = Pubkey::find_program_address(&[b"metadata", metadata_program.key.as_ref(), mint_input.key.as_ref()], &metadata_program.key);
-    //msg!(("metadata_pda: {} ", metadata_key);
 
     // let rent = Rent {
     //     lamports_per_byte_year: Mint::LEN as u64,
@@ -123,8 +109,7 @@ pub fn tokrize(
     // //msg!(("minimum rent {}", min_bal);
 
 
-    //msg!(("create mint account");
-    let result = invoke_signed(
+    let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
             mint_input.key, 
@@ -135,7 +120,7 @@ pub fn tokrize(
         &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
     );
 
-    let result = invoke_signed(
+    let _result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
             mint_input.key, 
@@ -147,7 +132,7 @@ pub fn tokrize(
         &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
     );
 
-    let result = invoke(
+    let _result = invoke(
         &create_associated_token_account(
             payer.key,
             destination.key,
@@ -162,7 +147,6 @@ pub fn tokrize(
             token_program.clone(), 
             rent_key.clone()
         ],
-        // accounts,
     );
     
     let creator = Creator {
@@ -204,9 +188,6 @@ pub fn tokrize(
         )?,
         accounts
     );
-
-
-    //msg!(("!!!");
 
     Ok(())
 }
@@ -407,13 +388,6 @@ pub fn add_nft_to_vault(
 
     let _ata_program = next_account_info(accounts_iter)?;
 
-    let (vault_auth_pda, vault_auth_bump) = Pubkey::find_program_address(&[b"vault", token_vault_program.key.as_ref(), vault.key.as_ref()], &token_vault_program.key);
-
-    let (vault_ata_pda, vault_ata_bump) = Pubkey::find_program_address(&[b"vault", token_vault_program.key.as_ref(), vault.key.as_ref()], &token_vault_program.key);
-
-
-    msg!("Create ata");
-
     let _result = invoke(
         &system_instruction::create_account(
             payer.key, 
@@ -465,20 +439,6 @@ pub fn add_nft_to_vault(
         accounts
     );
 
-    // msg!("Revoke");
-    
-    // let _result = invoke(
-    //     &revoke(
-    //         token_program.key, 
-    //         token_ata.key, 
-    //         payer.key,  // todo this should be the treasury?
-    //         &[]
-    //     ).unwrap(),
-    //     accounts
-    // );
-
-    msg!("Add to Vault2: {}, {}, {}", payer.is_signer, payer.is_writable, payer.key);
-    msg!("Add to Vault3: {}, {}, {}", token.is_signer, token.is_writable, token.key);
     let _result = invoke(
         &create_add_token_to_inactive_vault_instruction2(
             *token_vault_program.key,

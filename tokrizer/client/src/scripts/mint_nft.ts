@@ -13,9 +13,9 @@ import {
 } from '@solana/web3.js';
 import { MintLayout, Token, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { DataV2, CreateMetadataV2Args } from '@metaplex-foundation/mpl-token-metadata';
-import { METADATA_SCHEMA } from './metaplex_schema';
+import { METADATA_SCHEMA } from './instructions/metaplex_schema';
 import * as borsh from 'borsh';
-import { getPayer, getRpcUrl} from './utils';
+import { getPayer, getRpcUrl} from '../utils';
 
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
