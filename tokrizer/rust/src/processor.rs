@@ -456,25 +456,23 @@ pub fn add_nft_to_vault(
         accounts
     );
 
-    msg!("Add to Vault: {}", vault_auth_pda);
+    msg!("Add to Vault2: {}", vault_auth_pda);
 
-    let _result = invoke_signed_unchecked(
+
+    let _result = invoke(
         &create_add_token_to_inactive_vault_instruction(
             *token_vault_program.key,
             *safety_deposit_box.key, 
             *token_ata.key, 
             *vault_authority_ata.key, 
             *vault.key, 
-            *vault_authority.key, 
+            // *vault_authority.key,  //wtf why
+            *payer.key,
             *payer.key,
             *transfer_authority.key, 
             1 as u64,
         ),
-        accounts,
-        &[
-            // &[vault.key.as_ref(), token.key.as_ref(), token_vault_program.key.as_ref(), &[vault_bump]],
-            &[b"vault", token_vault_program.key.as_ref(), vault.key.as_ref(), &[vault_auth_bump]],
-        ]
+        accounts
     );
 
 

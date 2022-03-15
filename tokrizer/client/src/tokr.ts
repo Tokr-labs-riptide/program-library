@@ -231,8 +231,8 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
   const vaultAuthority1 = (await PublicKey.findProgramAddress([Buffer.from("vault"), TOKEN_VAULT_PROGRAM_ID.toBuffer(), vaultAddress.toBuffer()], TOKEN_VAULT_PROGRAM_ID))[0]
   const vaultAuthority = await Vault.getPDA(vaultAddress);
   const safetyDepositBox = await SafetyDepositBox.getPDA(vaultAddress, tokenAddress);
-  // const transferAuthority = Keypair.generate() // todo use PDA
-  const [transferAuthorityKey, transferAuthorityBump] = (await PublicKey.findProgramAddress([vaultAddress.toBuffer(), tokenAddress.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer()], programId));
+  const transferAuthority = Keypair.generate() // todo use PDA
+  // const [transferAuthorityKey, transferAuthorityBump] = (await PublicKey.findProgramAddress([vaultAddress.toBuffer(), tokenAddress.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer()], programId));
 
 
   const tokenAta = await getTokenWallet(payer.publicKey, tokenAddress); // todo replace with treasury
@@ -240,24 +240,25 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
 
 
   console.log("tokenAta: ", tokenAta.toBase58());
+  console.log("vault: ", vaultAddress.toBase58());
   console.log("vaultAuthority: ", vaultAuthority.toBase58());
-  console.log("vaultAuthority1: ", vaultAuthority.toBase58());
+  console.log("vaultAuthority1: ", vaultAuthority1.toBase58());
   console.log("vaultAuthorityAta: ", vaultAuthorityAta.toBase58());
   console.log("safetyDepositBox: ", safetyDepositBox.toBase58());
-  console.log("transferAuthority: ", transferAuthorityKey.toBase58());
+  console.log("transferAuthority: ", transferAuthority.publicKey.toBase58());
   
   const data = Buffer.from(borsh.serialize(
     AddTokenSchema,
-    new AddTokenArgs({vault_bump:transferAuthorityBump, vault_seed:"60rnn4rt9xl7f9orp73u4"})
+    new AddTokenArgs({vault_bump:254, vault_seed:"0qn4mac9qn2eqqt5alwb"})
   ));
 
   const instruction = new TransactionInstruction(
     {
       keys: [
         {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
-        {pubkey: tokenAddress, isSigner: false, isWritable: true},
+        {pubkey: tokenAddress, isSigner: false, isWritable: false},
         {pubkey: tokenAta, isSigner: false, isWritable: true},
-        {pubkey: transferAuthorityKey, isSigner: false, isWritable: true},
+        {pubkey: transferAuthority.publicKey, isSigner: true, isWritable: true},
         {pubkey: vaultAddress, isSigner: false, isWritable: true},
         {pubkey: vaultAuthority, isSigner: false, isWritable: true},
         {pubkey: vaultAuthorityAta, isSigner: false, isWritable: true},
@@ -276,7 +277,7 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
   const tx = await sendAndConfirmTransaction(
     connection,
     new Transaction().add(instruction),
-    [payer],
+    [payer, transferAuthority],
   );
 
   console.log("Transaction id:", tx);
