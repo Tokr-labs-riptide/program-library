@@ -11,6 +11,7 @@ import {
   createVault,
   addTokenToVault
 } from './tokr';
+import { InitVault, Vault, VaultProgram, SafetyDepositBox } from '@metaplex-foundation/mpl-token-vault';
 
 
 async function main() {
@@ -39,10 +40,15 @@ async function main() {
   // );
 
   // await createVault();
-
+  // let tokenAddress = new PublicKey("5XfvXXr7vmcubdRSdus5Qoc7dqLYPN6zB2TXprTAX31p")
+  // let vaultAddress = new PublicKey("7bt2xPtX9RZFzwHKt2xRAf2ANPvAE7cti77bVSaGKgEm")
+  // const vaultAuthority = await Vault.getPDA(vaultAddress);
+  // const safetyDepositBox = await SafetyDepositBox.getPDA(vaultAddress, tokenAddress);
+  // console.log("Vault Authority ", vaultAuthority.toBase58())
+  // console.log("safetyDepositBox ", safetyDepositBox.toBase58())
   await addTokenToVault(
-    new PublicKey("F3gcHvMzKzDCAYq236vrQkJWmCe4e6oeGTURDNPoGScy"), // vault address 
-    new PublicKey("BAuu3JzQKtpzJ5QvhN3yDA55YxCaFMzYPeTw336EKgHH"), // token address
+    new PublicKey("3JFnHtFBUrfktYSTc6Xpzkw5sZtzuVFpdf4DC5D5AWKj"), // vault address 
+    new PublicKey("EGrjqWEKnwgLyVumbxAE62qzdBRTnoqnTzkkBCrvTrKv"), // token address
   );
 
   console.log('Success');

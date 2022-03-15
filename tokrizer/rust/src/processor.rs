@@ -1,20 +1,20 @@
 use solana_program::{
     rent,
-    instruction::{AccountMeta},
+    instruction::{AccountMeta, Instruction},
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed, invoke_signed_unchecked},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
-    sysvar::{rent::Rent, Sysvar},
+    sysvar::{self, rent::Rent, Sysvar},
     pubkey::{Pubkey},
     system_instruction
 };
 use spl_token::{
     self,
-    instruction::{initialize_mint, mint_to, approve, revoke},
-    state::Mint
+    instruction::{initialize_mint, mint_to, approve, revoke, initialize_account},
+    state::{Mint, Account}
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::str::FromStr;
@@ -25,7 +25,7 @@ use mpl_token_metadata::{
 
 use mpl_token_vault::{
     state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_add_token_to_inactive_vault_instruction},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_add_token_to_inactive_vault_instruction, VaultInstruction, AmountArgs},
 };
 
 use spl_associated_token_account::{
@@ -359,7 +359,8 @@ pub fn create_vault(
             *redeem_treasury_ata.key,
             *fraction_treasury_ata.key,
             *vault.key, 
-            *payer.key,  //todo make this the DAO?
+            // *vault_authority.key,  //todo make this the DAO?
+            *payer.key,
             *external_pricing_acct.key,
             true
         ),
@@ -380,9 +381,9 @@ pub fn add_nft_to_vault(
     // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
 
-    let payer = next_account_info(accounts_iter)?;
-
     let token = next_account_info(accounts_iter)?;
+
+    let payer = &mut next_account_info(accounts_iter)?;
 
     let token_ata = next_account_info(accounts_iter)?;
 
@@ -392,7 +393,7 @@ pub fn add_nft_to_vault(
 
     let vault_authority = next_account_info(accounts_iter)?;
 
-    let vault_authority_ata = next_account_info(accounts_iter)?;
+    let token_store = next_account_info(accounts_iter)?;
 
     let safety_deposit_box = next_account_info(accounts_iter)?;
 
@@ -414,21 +415,41 @@ pub fn add_nft_to_vault(
     msg!("Create ata");
 
     let _result = invoke(
-        &create_associated_token_account(
-            payer.key,
-            vault_authority.key,
-            token.key, 
-        ),
-        &[
-            payer.clone(), 
-            vault_authority_ata.clone(), 
-            vault_authority.clone(),
-            token.clone(), 
-            system_program.clone(), 
-            token_program.clone(), 
-            rent_program.clone()
-        ]
+        &system_instruction::create_account(
+            payer.key, 
+            token_store.key, 
+            2039280 as u64, // wtf why does minimum balance give not enough
+            Account::LEN as u64,
+            &spl_token::id()),
+        accounts
     );
+
+    let _result = invoke(
+        &initialize_account(
+            &spl_token::id(), 
+            token_store.key, 
+            token.key, 
+            vault_authority.key
+        ).unwrap(),
+        accounts
+    );
+
+    // let _result = invoke(
+    //     &create_associated_token_account(
+    //         payer.key,
+    //         vault_authority.key,
+    //         token.key, 
+    //     ),
+    //     &[
+    //         payer.clone(), 
+    //         vault_authority_ata.clone(), 
+    //         vault_authority.clone(),
+    //         token.clone(), 
+    //         system_program.clone(), 
+    //         token_program.clone(), 
+    //         rent_program.clone()
+    //     ]
+    // );
 
     msg!("Approve");
 
@@ -444,35 +465,45 @@ pub fn add_nft_to_vault(
         accounts
     );
 
-    msg!("Revoke");
+    // msg!("Revoke");
     
+    // let _result = invoke(
+    //     &revoke(
+    //         token_program.key, 
+    //         token_ata.key, 
+    //         payer.key,  // todo this should be the treasury?
+    //         &[]
+    //     ).unwrap(),
+    //     accounts
+    // );
+
+    msg!("Add to Vault2: {}, {}, {}", payer.is_signer, payer.is_writable, payer.key);
+    msg!("Add to Vault3: {}, {}, {}", token.is_signer, token.is_writable, token.key);
     let _result = invoke(
-        &revoke(
-            token_program.key, 
-            token_ata.key, 
-            payer.key,  // todo this should be the treasury?
-            &[]
-        ).unwrap(),
-        accounts
-    );
-
-    msg!("Add to Vault2: {}", vault_auth_pda);
-
-
-    let _result = invoke(
-        &create_add_token_to_inactive_vault_instruction(
+        &create_add_token_to_inactive_vault_instruction2(
             *token_vault_program.key,
             *safety_deposit_box.key, 
             *token_ata.key, 
-            *vault_authority_ata.key, 
+            *token_store.key, 
             *vault.key, 
-            // *vault_authority.key,  //wtf why
             *payer.key,
             *payer.key,
             *transfer_authority.key, 
             1 as u64,
         ),
-        accounts
+        &[
+            payer.clone(),
+            safety_deposit_box.clone(), 
+            token_ata.clone(),
+            token_store.clone(),
+            vault.clone(),
+            payer.clone(),
+            payer.clone(),
+            transfer_authority.clone(),
+            token_program.clone(),
+            system_program.clone(),
+            rent_program.clone(),
+        ]
     );
 
 
@@ -487,4 +518,37 @@ pub fn fractionalize(
 
 
     Ok(())
+}
+
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_add_token_to_inactive_vault_instruction2(
+    program_id: Pubkey,
+    safety_deposit_box: Pubkey,
+    token_account: Pubkey,
+    store: Pubkey,
+    vault: Pubkey,
+    vault_authority: Pubkey,
+    payer: Pubkey,
+    transfer_authority: Pubkey,
+    amount: u64,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(safety_deposit_box, false),
+            AccountMeta::new(token_account, false),
+            AccountMeta::new(store, false),
+            AccountMeta::new(vault, false),
+            AccountMeta::new(vault_authority, true),
+            AccountMeta::new(payer, true),
+            AccountMeta::new_readonly(transfer_authority, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        ],
+        data: VaultInstruction::AddTokenToInactiveVault(AmountArgs { amount })
+            .try_to_vec()
+            .unwrap(),
+    }
 }
