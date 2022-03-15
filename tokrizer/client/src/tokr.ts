@@ -206,14 +206,6 @@ const VaultSchema = new Map([
 
 export class AddTokenArgs {
   instruction = 2;
-  vault_bump: number;
-  vault_seed: string;
-  constructor(fields: { vault_bump: number, vault_seed: string } | undefined = undefined) {
-    if (fields) {
-      this.vault_bump = fields.vault_bump;
-      this.vault_seed = fields.vault_seed;
-    }
-  }
 }
 
 const AddTokenSchema = new Map([
@@ -221,8 +213,6 @@ const AddTokenSchema = new Map([
     kind: 'struct',
     fields: [
       ['instruction', 'u8'],
-      ['vault_bump', 'u8'],
-      ['vault_seed', 'string']
     ]
   }],
 ]);
@@ -249,7 +239,7 @@ export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: Pub
 
   const data = Buffer.from(borsh.serialize(
     AddTokenSchema,
-    new AddTokenArgs({ vault_bump: 254, vault_seed: "0qn4mac9qn2eqqt5alwb" })
+    new AddTokenArgs()
   ));
 
   const instruction = new TransactionInstruction(

@@ -48,9 +48,9 @@ pub fn process(
             msg!("Create Vault Instruction!");
             create_vault(program_id, accounts, args.vault_seed, args.vault_bump);
         }
-        TokrizerInstruction::AddNftToVault(args) => {
+        TokrizerInstruction::AddNftToVault => {
             msg!("Add NFT To Vault Instruction!");
-            add_nft_to_vault(program_id, accounts, args.vault_seed, args.vault_bump);
+            add_nft_to_vault(program_id, accounts);
         }
         TokrizerInstruction::Fractionalize(args) => {
             msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
@@ -353,9 +353,7 @@ pub fn create_vault(
 
 pub fn add_nft_to_vault(
     program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    vault_seed: String,
-    vault_bump: u8,
+    accounts: &[AccountInfo]
 ) -> ProgramResult {
 
     // Iterating accounts is safer than indexing
