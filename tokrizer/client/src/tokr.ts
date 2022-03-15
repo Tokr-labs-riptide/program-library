@@ -16,9 +16,9 @@ import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT 
 import fs from 'mz/fs';
 import path from 'path';
 import * as borsh from 'borsh';
-import {getPayer, getRpcUrl, createKeypairFromFile} from './utils';
+import { getPayer, getRpcUrl, createKeypairFromFile } from './utils';
 
-import { InitVault, Vault, VaultProgram } from '@metaplex-foundation/mpl-token-vault';
+import { InitVault, Vault, VaultProgram, SafetyDepositBox } from '@metaplex-foundation/mpl-token-vault';
 
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -84,7 +84,7 @@ export async function establishConnection(): Promise<void> {
 export async function establishPayer(): Promise<void> {
   let fees = 0;
   if (!payer) {
-    const {feeCalculator} = await connection.getRecentBlockhash();
+    const { feeCalculator } = await connection.getRecentBlockhash();
 
     // Calculate the cost to fund the greeter account
     fees += await connection.getMinimumBalanceForRentExemption(MintLayout.span);
@@ -155,7 +155,7 @@ export class TokrizeArgs {
   uri: string;
   mint_bump: number;
   mint_seed: string;
-  constructor(fields: {name: string, symbol: string, uri: string, mint_bump: number, mint_seed: string} | undefined = undefined) {
+  constructor(fields: { name: string, symbol: string, uri: string, mint_bump: number, mint_seed: string } | undefined = undefined) {
     if (fields) {
       this.name = fields.name;
       this.symbol = fields.symbol;
@@ -168,7 +168,7 @@ export class TokrizeArgs {
 
 const TokrizeSchema = new Map([
   [TokrizeArgs, {
-    kind: 'struct', 
+    kind: 'struct',
     fields: [
       ['instruction', 'u8'],
       ['name', 'string'],
@@ -176,7 +176,8 @@ const TokrizeSchema = new Map([
       ['uri', 'string'],
       ['mint_bump', 'u8'],
       ['mint_seed', 'string']
-    ]}],
+    ]
+  }],
 ]);
 
 
@@ -184,7 +185,7 @@ export class VaultArgs {
   instruction = 1;
   vault_bump: number;
   vault_seed: string;
-  constructor(fields: {vault_bump: number, vault_seed: string} | undefined = undefined) {
+  constructor(fields: { vault_bump: number, vault_seed: string } | undefined = undefined) {
     if (fields) {
       this.vault_bump = fields.vault_bump;
       this.vault_seed = fields.vault_seed;
@@ -194,31 +195,113 @@ export class VaultArgs {
 
 const VaultSchema = new Map([
   [VaultArgs, {
-    kind: 'struct', 
+    kind: 'struct',
     fields: [
       ['instruction', 'u8'],
       ['vault_bump', 'u8'],
       ['vault_seed', 'string']
-    ]}],
+    ]
+  }],
 ]);
 
-export async function createVault(destination: PublicKey): Promise<void> {
+export class AddTokenArgs {
+  instruction = 2;
+  vault_bump: number;
+  vault_seed: string;
+  constructor(fields: { vault_bump: number, vault_seed: string } | undefined = undefined) {
+    if (fields) {
+      this.vault_bump = fields.vault_bump;
+      this.vault_seed = fields.vault_seed;
+    }
+  }
+}
+
+const AddTokenSchema = new Map([
+  [AddTokenArgs, {
+    kind: 'struct',
+    fields: [
+      ['instruction', 'u8'],
+      ['vault_bump', 'u8'],
+      ['vault_seed', 'string']
+    ]
+  }],
+]);
+
+export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: PublicKey): Promise<void> {
+  console.log('Payer: ', payer.publicKey.toBase58());
+
+
+  const vaultAuthority = await Vault.getPDA(vaultAddress);
+  const safetyDepositBox = await SafetyDepositBox.getPDA(vaultAddress, tokenAddress);
+  const transferAuthority = Keypair.generate() // todo use PDA
+
+
+  const tokenAta = await getTokenWallet(payer.publicKey, tokenAddress); // todo replace with treasury
+  const vaultAuthorityAta = await getTokenWallet(vaultAuthority, tokenAddress); // todo replace with treasury
+  const tokenStore = Keypair.generate() // todo use PDA
+
+  console.log("tokenAta: ", tokenAta.toBase58());
+  console.log("vault: ", vaultAddress.toBase58());
+  console.log("vaultAuthority: ", vaultAuthority.toBase58());
+  console.log("vaultAuthorityAta: ", vaultAuthorityAta.toBase58());
+  console.log("safetyDepositBox: ", safetyDepositBox.toBase58());
+  console.log("transferAuthority: ", transferAuthority.publicKey.toBase58());
+
+  const data = Buffer.from(borsh.serialize(
+    AddTokenSchema,
+    new AddTokenArgs({ vault_bump: 254, vault_seed: "0qn4mac9qn2eqqt5alwb" })
+  ));
+
+  const instruction = new TransactionInstruction(
+    {
+      keys: [
+        { pubkey: tokenAddress, isSigner: false, isWritable: true },
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: tokenAta, isSigner: false, isWritable: true },
+        { pubkey: transferAuthority.publicKey, isSigner: true, isWritable: true },
+        { pubkey: vaultAddress, isSigner: false, isWritable: true },
+        { pubkey: vaultAuthority, isSigner: false, isWritable: true },
+        { pubkey: tokenStore.publicKey, isSigner: true, isWritable: true },
+        { pubkey: safetyDepositBox, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      ],
+      programId,
+      data: data
+    }
+  );
+
+  let transaction = new Transaction().add(instruction)
+  transaction.feePayer = payer.publicKey
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [transferAuthority, tokenStore, payer],
+  );
+
+  console.log("Transaction id:", tx);
+}
+
+
+export async function createVault(): Promise<void> {
 
   let vaultSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
 
-  const vaultPda = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), Buffer.from(vaultSeed)], programId))
-  const vaultKey = vaultPda[0]
-  const vaultBump = vaultPda[1]
+  const [vaultKey, vaultBump] = (await PublicKey.findProgramAddress([payer.publicKey.toBuffer(), TOKEN_VAULT_PROGRAM_ID.toBuffer(), Buffer.from(vaultSeed)], programId))
+
+  console.log("Vault Seed: ", vaultSeed);
+  console.log("Vault Bump: ", vaultBump);
 
   const data = Buffer.from(borsh.serialize(
     VaultSchema,
-    new VaultArgs({vault_bump: vaultBump, vault_seed: vaultSeed})
+    new VaultArgs({ vault_bump: vaultBump, vault_seed: vaultSeed })
   ));
 
   console.log("MAX RENT:" + await connection.getMinimumBalanceForRentExemption(Vault.MAX_VAULT_SIZE));
 
-  // const vaultAuthority = (await PublicKey.findProgramAddress([Buffer.from("vault"), TOKEN_VAULT_PROGRAM_ID.toBuffer(), vaultKey.toBuffer()], programId))[0]
-  
   const vaultAuthority = await Vault.getPDA(vaultKey);
 
   const externalPricingAccountKey = (await PublicKey.findProgramAddress([Buffer.from("external"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
@@ -240,19 +323,19 @@ export async function createVault(destination: PublicKey): Promise<void> {
   const instruction = new TransactionInstruction(
     {
       keys: [
-        {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
-        {pubkey: vaultKey, isSigner: false, isWritable: true}, 
-        {pubkey: vaultAuthority, isSigner: false, isWritable: true}, 
-        {pubkey: externalPricingAccountKey, isSigner: false, isWritable: true}, 
-        {pubkey: fractionMintkey, isSigner: false, isWritable: true}, 
-        {pubkey: redeemTreasuryKey, isSigner: false, isWritable: true}, 
-        {pubkey: fractionTreasuryKey, isSigner: false, isWritable: true}, 
-        {pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-        {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-        {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: NATIVE_MINT, isSigner: false, isWritable: false},
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: vaultKey, isSigner: false, isWritable: true },
+        { pubkey: vaultAuthority, isSigner: false, isWritable: true },
+        { pubkey: externalPricingAccountKey, isSigner: false, isWritable: true },
+        { pubkey: fractionMintkey, isSigner: false, isWritable: true },
+        { pubkey: redeemTreasuryKey, isSigner: false, isWritable: true },
+        { pubkey: fractionTreasuryKey, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: NATIVE_MINT, isSigner: false, isWritable: false },
       ],
       programId,
       data: data
@@ -272,13 +355,13 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
   console.log('Payer: ', payer.publicKey.toBase58());
 
   let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
-  console.log("random", mintSeed);
+  console.log("random seed", mintSeed);
   args.mint_seed = mintSeed;
-  let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), programId.toBuffer()], programId));
+  let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
   const mintAccount = pda[0]
   args.mint_bump = pda[1]
 
-  
+
   console.log("mint", mintAccount.toBase58());
   console.log("bump", args.mint_bump);
 
@@ -291,21 +374,21 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
 
   const tokenAta = (await PublicKey.findProgramAddress([destination.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
-  
+
   const instruction = new TransactionInstruction(
     {
       keys: [
-        {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
-        {pubkey: destination, isSigner: false, isWritable: true}, 
-        {pubkey: payer.publicKey, isSigner: true, isWritable: true}, 
-        {pubkey: mintAccount, isSigner: false, isWritable: true}, 
-        {pubkey: metadataAccount, isSigner: false, isWritable: true}, 
-        {pubkey: tokenAta, isSigner: false, isWritable: true},
-        {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-        {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-        {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: destination, isSigner: false, isWritable: true },
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: mintAccount, isSigner: false, isWritable: true },
+        { pubkey: metadataAccount, isSigner: false, isWritable: true },
+        { pubkey: tokenAta, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       ],
       programId,
       data: data
@@ -326,9 +409,9 @@ export const getTokenWallet = async function (
   mint: PublicKey,
 ) {
   return (
-      await PublicKey.findProgramAddress(
-          [wallet.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-          ASSOCIATED_TOKEN_PROGRAM_ID,
-      )
+    await PublicKey.findProgramAddress(
+      [wallet.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
   )[0];
 };

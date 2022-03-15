@@ -30,6 +30,7 @@ pub enum TokrizerInstruction {
 
     MintTokrNft(MintArgs),
     CreateVault(VaultArgs),
+    AddNftToVault(VaultArgs),
     Fractionalize(FractionalizeArgs),
 
 }

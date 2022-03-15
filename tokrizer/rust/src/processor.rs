@@ -1,20 +1,18 @@
 use solana_program::{
-    rent,
-    instruction::{AccountMeta},
+    instruction::{AccountMeta, Instruction},
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack},
-    sysvar::{rent::Rent, Sysvar},
+    program_pack::{Pack},
+    sysvar::{self},
     pubkey::{Pubkey},
     system_instruction
 };
 use spl_token::{
     self,
-    instruction::{initialize_mint, mint_to},
-    state::Mint
+    instruction::{initialize_mint, mint_to, approve, revoke, initialize_account},
+    state::{Mint, Account}
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::str::FromStr;
@@ -25,7 +23,7 @@ use mpl_token_metadata::{
 
 use mpl_token_vault::{
     state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, VaultInstruction, AmountArgs},
 };
 
 use spl_associated_token_account::{
@@ -39,7 +37,6 @@ pub fn process(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    //msg!(("Starting up program! {} ", program_id);
     let instruction = TokrizerInstruction::try_from_slice(instruction_data)?;
 
     match instruction {
@@ -47,13 +44,17 @@ pub fn process(
             msg!("Mine NFT Instruction! Name: {}, Symbol: {}, Uri: {}", args.name, args.symbol, args.uri);
             tokrize(program_id, accounts, args.name, args.symbol, args.uri, args.mint_bump, args.mint_seed);
         }
-        TokrizerInstruction::Fractionalize(args) => {
-            msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
-            fractionalize(program_id, accounts, args.number_of_shares);
-        }
         TokrizerInstruction::CreateVault(args) => {
             msg!("Create Vault Instruction!");
             create_vault(program_id, accounts, args.vault_seed, args.vault_bump);
+        }
+        TokrizerInstruction::AddNftToVault(args) => {
+            msg!("Add NFT To Vault Instruction!");
+            add_nft_to_vault(program_id, accounts, args.vault_seed, args.vault_bump);
+        }
+        TokrizerInstruction::Fractionalize(args) => {
+            msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
+            fractionalize(program_id, accounts, args.number_of_shares);
         }
     }
 
@@ -74,42 +75,30 @@ pub fn tokrize(
     let accounts_iter = &mut accounts.iter();
 
     let payer = next_account_info(accounts_iter)?;
-    //msg!(("payer: {} ", payer.key);
 
     let destination = next_account_info(accounts_iter)?;
-    //msg!(("payer: {} ", payer.key);
 
     let creator = next_account_info(accounts_iter)?;
-    //msg!(("payer: {} ", payer.key);
 
     let mint_input = next_account_info(accounts_iter)?;
-    //msg!(("mint_input: {} ", mint_input.key);
 
-    let metadata_acct = next_account_info(accounts_iter)?;
-    //msg!(("metadata_acct: {} ", metadata_acct.key);
+    let _metadata_acct = next_account_info(accounts_iter)?;
 
     let token_ata_input = next_account_info(accounts_iter)?;
-    //msg!(("token_ata_input: {} ", token_ata_input.key);
 
     let token_program = next_account_info(accounts_iter)?;
-    //msg!(("token_program: {} ", token_program.key);
 
     let metadata_program = next_account_info(accounts_iter)?;
-    //msg!(("metadata_program: {} ", metadata_program.key);
 
     let system_program = next_account_info(accounts_iter)?;
-    //msg!(("system_program: {} ", system_program.key);
 
     let rent_key = next_account_info(accounts_iter)?;
-    //msg!(("rent_key: {} ", rent_key.key);
 
     // todo check if mint input is correct
-    // let (mint_key, mint_bump) = Pubkey::find_program_address(&[payer.key.as_ref(), uri.as_bytes(), program_id.as_ref()], &program_id);
     msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
 
     // todo check if metadata input is correct
     let (metadata_key, metadata_bump) = Pubkey::find_program_address(&[b"metadata", metadata_program.key.as_ref(), mint_input.key.as_ref()], &metadata_program.key);
-    //msg!(("metadata_pda: {} ", metadata_key);
 
     // let rent = Rent {
     //     lamports_per_byte_year: Mint::LEN as u64,
@@ -119,8 +108,7 @@ pub fn tokrize(
     // //msg!(("minimum rent {}", min_bal);
 
 
-    //msg!(("create mint account");
-    let result = invoke_signed(
+    let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
             mint_input.key, 
@@ -128,10 +116,10 @@ pub fn tokrize(
             Mint::LEN as u64,
             &spl_token::id()),
         accounts,
-        &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
+        &[&[mint_seed.as_bytes(), payer.key.as_ref(), destination.key.as_ref(), &[mint_bump]]]
     );
 
-    let result = invoke_signed(
+    let _result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
             mint_input.key, 
@@ -140,10 +128,10 @@ pub fn tokrize(
             0
         )?,
         accounts,
-        &[&[mint_seed.as_bytes(), payer.key.as_ref(), program_id.as_ref(), &[mint_bump]]]
+        &[&[mint_seed.as_bytes(), payer.key.as_ref(), destination.key.as_ref(), &[mint_bump]]]
     );
 
-    let result = invoke(
+    let _result = invoke(
         &create_associated_token_account(
             payer.key,
             destination.key,
@@ -158,7 +146,6 @@ pub fn tokrize(
             token_program.clone(), 
             rent_key.clone()
         ],
-        // accounts,
     );
     
     let creator = Creator {
@@ -200,9 +187,6 @@ pub fn tokrize(
         )?,
         accounts
     );
-
-
-    //msg!(("!!!");
 
     Ok(())
 }
@@ -347,7 +331,6 @@ pub fn create_vault(
         &[&[payer.key.as_ref(), token_vault_program.key.as_ref(), vault_seed.as_ref(), &[vault_bump]]]
     );
 
-    msg!("WHAT");
 
     let _result = invoke_signed(
         &create_init_vault_instruction(
@@ -356,7 +339,8 @@ pub fn create_vault(
             *redeem_treasury_ata.key,
             *fraction_treasury_ata.key,
             *vault.key, 
-            *vault_authority.key,
+            // *vault_authority.key,  //todo make this the DAO?
+            *payer.key,
             *external_pricing_acct.key,
             true
         ),
@@ -367,6 +351,104 @@ pub fn create_vault(
     Ok(())
 }
 
+pub fn add_nft_to_vault(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    vault_seed: String,
+    vault_bump: u8,
+) -> ProgramResult {
+
+    // Iterating accounts is safer than indexing
+    let accounts_iter = &mut accounts.iter();
+
+    let token = next_account_info(accounts_iter)?;
+
+    let payer = &mut next_account_info(accounts_iter)?;
+
+    let token_ata = next_account_info(accounts_iter)?;
+
+    let transfer_authority = next_account_info(accounts_iter)?;
+
+    let vault = next_account_info(accounts_iter)?;
+
+    let vault_authority = next_account_info(accounts_iter)?;
+
+    let token_store = next_account_info(accounts_iter)?;
+
+    let safety_deposit_box = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    let token_program = next_account_info(accounts_iter)?;
+
+    let system_program = next_account_info(accounts_iter)?;
+
+    let rent_program = next_account_info(accounts_iter)?;
+
+    let _ata_program = next_account_info(accounts_iter)?;
+
+    let _result = invoke(
+        &system_instruction::create_account(
+            payer.key, 
+            token_store.key, 
+            2039280 as u64, // wtf why does minimum balance give not enough
+            Account::LEN as u64,
+            &spl_token::id()),
+        accounts
+    );
+
+    let _result = invoke(
+        &initialize_account(
+            &spl_token::id(), 
+            token_store.key, 
+            token.key, 
+            vault_authority.key
+        ).unwrap(),
+        accounts
+    );
+    
+    let _result = invoke(
+        &approve(
+            token_program.key, 
+            token_ata.key, 
+            transfer_authority.key,  // todo is the payer of the authority 
+            payer.key,  // todo change to treasury
+            &[], 
+            1 as u64
+        ).unwrap(),
+        accounts
+    );
+
+    let _result = invoke(
+        &create_add_token_to_inactive_vault_instruction2(
+            *token_vault_program.key,
+            *safety_deposit_box.key, 
+            *token_ata.key, 
+            *token_store.key, 
+            *vault.key, 
+            *payer.key,
+            *payer.key,
+            *transfer_authority.key, 
+            1 as u64,
+        ),
+        &[
+            payer.clone(),
+            safety_deposit_box.clone(), 
+            token_ata.clone(),
+            token_store.clone(),
+            vault.clone(),
+            payer.clone(),
+            payer.clone(),
+            transfer_authority.clone(),
+            token_program.clone(),
+            system_program.clone(),
+            rent_program.clone(),
+        ]
+    );
+
+
+    Ok(())
+}
 
 pub fn fractionalize(
     program_id: &Pubkey,
@@ -374,5 +456,39 @@ pub fn fractionalize(
     number_of_shares: u64
 ) -> ProgramResult {
 
+
     Ok(())
+}
+
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_add_token_to_inactive_vault_instruction2(
+    program_id: Pubkey,
+    safety_deposit_box: Pubkey,
+    token_account: Pubkey,
+    store: Pubkey,
+    vault: Pubkey,
+    vault_authority: Pubkey,
+    payer: Pubkey,
+    transfer_authority: Pubkey,
+    amount: u64,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(safety_deposit_box, false),
+            AccountMeta::new(token_account, false),
+            AccountMeta::new(store, false),
+            AccountMeta::new(vault, false),
+            AccountMeta::new(vault_authority, true),
+            AccountMeta::new(payer, true),
+            AccountMeta::new_readonly(transfer_authority, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        ],
+        data: VaultInstruction::AddTokenToInactiveVault(AmountArgs { amount })
+            .try_to_vec()
+            .unwrap(),
+    }
 }

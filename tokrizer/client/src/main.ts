@@ -1,20 +1,20 @@
 /**
  * Hello world
  */
- import {PublicKey} from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import {
   establishConnection,
   establishPayer,
   checkProgram,
+  addTokenToVault,
   mintNft,
-  TokrizeArgs,
-  createVault
+  createVault,
+  TokrizeArgs
 } from './tokr';
-
 
 async function main() {
   console.log("Let's say hello to a Solana account...");
-  
+
   //Establish connection to the cluster
   await establishConnection();
 
@@ -34,11 +34,14 @@ async function main() {
   //   mint_bump: NaN,
   //   mint_seed: ''
   // }),
-  // new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
+  //   new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums")
   // );
 
-  await createVault(
-  new PublicKey("6hE24sGPa24GvFrUf2Wi8TcaEvXVBSRcWDRB8XxoHdEn")
+  // await createVault();
+
+  await addTokenToVault(
+    new PublicKey("2M4ptc4LAEBHf4F6b2FjeYJfJbQHuFrC1BWwUykrjdz3"), // vault address 
+    new PublicKey("Ai3oeMzCyU793bzqwK7yVyoFkz7o6CgMJVGuswUbtq2Y"), // token address
   );
 
   console.log('Success');

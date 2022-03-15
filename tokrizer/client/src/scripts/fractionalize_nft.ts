@@ -6,15 +6,15 @@ import {
     PublicKey,
 } from '@solana/web3.js';
 import * as metaplex from "@metaplex/js";
-import { getPayer, getRpcUrl} from './utils';
+import { getPayer, getRpcUrl} from '../utils';
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { BN } from '@project-serum/anchor';
 
 
-const tokenAddress = new PublicKey("BGwSxv5iVhFBkuhS2i9YxLRwPewfd8HvBW263DXdkRHH");
+const tokenAddress = new PublicKey("FzGU33PwrUn3QePcWSb5hSxmW8iVqtWShM8hpP3f2G8c");
 const numberOfShares = 100;
 
-export async function addToVault(): Promise<void> {
+export async function fractionalize(): Promise<void> {
 
     // get connection
     const rpcUrl = await getRpcUrl();
@@ -47,10 +47,6 @@ export async function addToVault(): Promise<void> {
     console.log("Create Vault tx: ", txId2);
     console.log(`Vault: ${vault},    FactionMint: ${fractionMint},     RedeemTreasury: ${redeemTreasury},    fractionTreasury: ${fractionTreasury}`);
 
-
-    console.log(`Confirming tx ${txId2}`)
-    await connection.confirmTransaction(txId2);
-    
     // Add token to vault
     const tokenAccount = await findAssociatedTokenAddress(payer.publicKey, tokenAddress);
 
@@ -60,13 +56,50 @@ export async function addToVault(): Promise<void> {
         wallet: metaplexWallet, 
         vault: vault, 
         nfts: [{tokenAccount: tokenAccount, tokenMint: tokenAddress, amount: new BN(1)}] 
-      });
-    console.log("Safety deposit boxes", result.safetyDepositTokenStores);
+      })
+      console.log("Safety deposit boxes", result.safetyDepositTokenStores);
       
        
     const vaultObject = await metaplex.programs.vault.Vault.load(connection, vault);
 
     console.log(vaultObject);  
+
+    // Mint Fractional shares
+    const txData1 = new metaplex.programs.vault.MintFractionalShares({feePayer: payer.publicKey},
+        {    
+          vault: vault,
+          fractionMint: new PublicKey(fractionMint),
+          fractionMintAuthority: new PublicKey(vaultObject.data.authority),
+          fractionTreasury: new PublicKey(fractionTreasury),
+          store: new PublicKey(result.safetyDepositTokenStores[0].tokenStoreAccount),
+          vaultAuthority: new PublicKey(vaultObject.data.authority),
+          numberOfShares: new BN(numberOfShares)
+        }
+      );
+    
+      txData1.recentBlockhash = (await connection.getRecentBlockhash()).blockhash;
+    
+      const signedTx = await metaplexWallet.signTransaction(txData1);
+    
+      console.log(signedTx);
+    
+      const txId = await connection.sendRawTransaction(signedTx.serialize());
+    
+      console.log(txId);
+
+    // Activate Vault
+    const txData2 = new metaplex.programs.vault.ActivateVault({feePayer: payer.publicKey},
+        {    
+          vault: vault,
+          fractionMint: fractionMint,
+          fractionMintAuthority: new PublicKey(vaultObject.data.authority),
+          fractionTreasury: new PublicKey(fractionTreasury),
+          vaultAuthority: payer.publicKey,
+          numberOfShares: new BN(numberOfShares)
+        }
+      );
+
+    console.log("Activate Vault tx data:", txData2)
 }
 
 async function findAssociatedTokenAddress(
@@ -83,7 +116,7 @@ async function findAssociatedTokenAddress(
     ))[0];
   }
 
-addToVault().then(
+fractionalize().then(
     () => process.exit(),
     err => {
       console.error(err);

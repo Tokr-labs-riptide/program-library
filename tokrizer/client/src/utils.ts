@@ -6,7 +6,7 @@ import os from 'os';
 import fs from 'mz/fs';
 import path from 'path';
 import yaml from 'yaml';
-import {Keypair} from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 
 /**
  * @private
@@ -20,7 +20,7 @@ async function getConfig(): Promise<any> {
     'cli',
     'config.yml',
   );
-  const configYml = await fs.readFile(CONFIG_FILE_PATH, {encoding: 'utf8'});
+  const configYml = await fs.readFile(CONFIG_FILE_PATH, { encoding: 'utf8' });
   return yaml.parse(configYml);
 }
 
@@ -62,7 +62,7 @@ export async function getPayer(): Promise<Keypair> {
 export async function createKeypairFromFile(
   filePath: string,
 ): Promise<Keypair> {
-  const secretKeyString = await fs.readFile(filePath, {encoding: 'utf8'});
+  const secretKeyString = await fs.readFile(filePath, { encoding: 'utf8' });
   const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
   return Keypair.fromSecretKey(secretKey);
 }
