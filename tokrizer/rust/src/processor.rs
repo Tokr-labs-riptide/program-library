@@ -37,7 +37,6 @@ pub fn process(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    //msg!(("Starting up program! {} ", program_id);
     let instruction = TokrizerInstruction::try_from_slice(instruction_data)?;
 
     match instruction {
@@ -83,7 +82,7 @@ pub fn tokrize(
 
     let mint_input = next_account_info(accounts_iter)?;
 
-    let metadata_acct = next_account_info(accounts_iter)?;
+    let _metadata_acct = next_account_info(accounts_iter)?;
 
     let token_ata_input = next_account_info(accounts_iter)?;
 
@@ -407,26 +406,7 @@ pub fn add_nft_to_vault(
         ).unwrap(),
         accounts
     );
-
-    // let _result = invoke(
-    //     &create_associated_token_account(
-    //         payer.key,
-    //         vault_authority.key,
-    //         token.key, 
-    //     ),
-    //     &[
-    //         payer.clone(), 
-    //         vault_authority_ata.clone(), 
-    //         vault_authority.clone(),
-    //         token.clone(), 
-    //         system_program.clone(), 
-    //         token_program.clone(), 
-    //         rent_program.clone()
-    //     ]
-    // );
-
-    msg!("Approve");
-
+    
     let _result = invoke(
         &approve(
             token_program.key, 

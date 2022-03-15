@@ -1,7 +1,7 @@
 /**
  * Hello world
  */
-import {PublicKey} from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import {
   establishConnection,
   establishPayer,
@@ -14,7 +14,7 @@ import {
 
 async function main() {
   console.log("Let's say hello to a Solana account...");
-  
+
   //Establish connection to the cluster
   await establishConnection();
 
