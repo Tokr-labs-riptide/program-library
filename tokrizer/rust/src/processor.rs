@@ -391,8 +391,6 @@ pub fn add_nft_to_vault(
 
     let (_store_pda, store_bump) = Pubkey::find_program_address(&[b"store", vault.key.as_ref(), token.key.as_ref()], &program_id);
 
-    msg!("HERE1");
-
     let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key, 
@@ -403,8 +401,6 @@ pub fn add_nft_to_vault(
         accounts,
         &[&[b"store", vault.key.as_ref(), token.key.as_ref(), &[store_bump]]]
     );
-
-    msg!("HERE2");
 
     let _result = invoke(
         &initialize_account(
@@ -427,8 +423,6 @@ pub fn add_nft_to_vault(
         ).unwrap(),
         accounts
     );
-
-    msg!("lets gooooo");
 
     let _result = invoke_signed(
         &create_add_token_to_inactive_vault_instruction2(
