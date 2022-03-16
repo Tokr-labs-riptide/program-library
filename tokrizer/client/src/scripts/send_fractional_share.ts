@@ -3,7 +3,7 @@ import { getPayer } from '../utils';
 import BN from 'bn.js';
 import { Connection, NodeWallet, programs, actions } from '@metaplex/js';
 import { Keypair, PublicKey, TransactionInstruction, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
-import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT } from '@solana/spl-token';
+import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, Token } from '@solana/spl-token';
 import { InitVault, Vault, VaultProgram, SafetyDepositBox, VaultState } from '@metaplex-foundation/mpl-token-vault';
 
 
@@ -63,7 +63,7 @@ async function mintFractionalShares(shareCount: BN) {
     [payer],
   );
 
-  console.log("Tx: ", tx);
+  // console.log("Tx: ", tx);
 }
 
 
