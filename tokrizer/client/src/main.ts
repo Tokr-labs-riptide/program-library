@@ -28,20 +28,20 @@ async function main() {
   //   // name: 'smaABC',
   //   // symbol: 'worlda',
   //   // uri: 'www.gaasd.com'
-  //   name: 'This is an NFT',
+  //   name: 'Hello Eric',
   //   symbol: 'rNFT',
-  //   uri: 'https://fazymvttg4pmy7ebypj67iadpiro3z6wxxzfwmmu7modia2ttwha.arweave.net/KDOGVnM3Hsx8gcPT76ADeiLt59a98lsxlPscNANTnY4/',
+  //   uri: 'https://scozleoijzwyhyinwfvvyu5rjmnvntbyqgoa2u4wfebkf4zp.arweave.net/kJ2Vkc_hObYPhDbFr_XFOxSxtWzDiBnA1TlikCovMvU/',
   //   mint_bump: NaN,
   //   mint_seed: ''
   // }),
-  //   new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums")
+  //   new PublicKey("7M9H2BHZRA6RMdmWPun875kmko7dHiPULi5SW3D9s1zG")
   // );
 
   await createVault();
 
   // await addTokenToVault(
-  //   new PublicKey("2M4ptc4LAEBHf4F6b2FjeYJfJbQHuFrC1BWwUykrjdz3"), // vault address 
-  //   new PublicKey("3jZjTFU8YCktnrCmWE45VhmU3b3VpuojjaFJwwJBZQa9"), // token address
+  //   new PublicKey("Fa6anVWLPQZjx2RTz76Z3QiZKaC3cJK2nHJ2pH9VYdZp"), // vault address 
+  //   new PublicKey("Afop3y2EFrLB4xKdwozibmF1hFP5qWBAHRqsE73YKB1t"), // token address
   // );
 
   console.log('Success');
