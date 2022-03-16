@@ -63,7 +63,7 @@ async function mintFractionalShares(shareCount: BN) {
     [payer],
   );
 
-  // console.log("Tx: ", tx);
+  console.log("Tx: ", tx);
 }
 
 
