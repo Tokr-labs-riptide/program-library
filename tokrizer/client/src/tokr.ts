@@ -15,10 +15,12 @@ import {
 import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT } from '@solana/spl-token';
 import fs from 'mz/fs';
 import path from 'path';
+import BN from 'bn.js';
 import * as borsh from 'borsh';
 import { getPayer, getRpcUrl, createKeypairFromFile } from './utils';
-
-import { InitVault, Vault, VaultProgram, SafetyDepositBox } from '@metaplex-foundation/mpl-token-vault';
+import { NodeWallet, programs, actions } from '@metaplex/js';
+import { InitVault, Vault, VaultProgram, SafetyDepositBox, VaultState } from '@metaplex-foundation/mpl-token-vault';
+import { TokrizeArgs, TokrizeSchema, AddTokenArgs, AddTokenSchema, VaultArgs, VaultSchema } from './tokrData';
 
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -148,74 +150,76 @@ export async function checkProgram(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 }
 
-export class TokrizeArgs {
-  instruction = 0;
-  name: string;
-  symbol: string;
-  uri: string;
-  mint_bump: number;
-  mint_seed: string;
-  constructor(fields: { name: string, symbol: string, uri: string, mint_bump: number, mint_seed: string } | undefined = undefined) {
-    if (fields) {
-      this.name = fields.name;
-      this.symbol = fields.symbol;
-      this.uri = fields.uri;
-      this.mint_bump = fields.mint_bump;
-      this.mint_seed = fields.mint_seed;
+export async function sendShare(vaultAddress: PublicKey, destination: PublicKey, amount: BN) {
+
+  const vault = await programs.vault.Vault.load(connection, vaultAddress);
+  
+  let response = await actions.sendToken(
+    {
+      connection: connection,
+      wallet: new NodeWallet(payer),
+      source: new PublicKey("EP8QgjMVsaZkKHeqE47rXJdU9aUyNi7bJNo9A1QPnGnx"), // vaultMintAuthority todo how to get this??
+      destination: destination,
+      mint: new PublicKey(vault.data.fractionMint),
+      amount: amount
     }
-  }
+  )
+
+  console.log("Tx: ", response.txId);
 }
 
-const TokrizeSchema = new Map([
-  [TokrizeArgs, {
-    kind: 'struct',
-    fields: [
-      ['instruction', 'u8'],
-      ['name', 'string'],
-      ['symbol', 'string'],
-      ['uri', 'string'],
-      ['mint_bump', 'u8'],
-      ['mint_seed', 'string']
-    ]
-  }],
-]);
+export async function mintFractionalShares(
+  vaultAddress: PublicKey, 
+  vaultMintAuthority: PublicKey, 
+  tokenStore: PublicKey,
+  shareCount: BN
+  ) {
 
+  const vault = await programs.vault.Vault.load(connection, vaultAddress);
 
-export class VaultArgs {
-  instruction = 1;
-  vault_bump: number;
-  vault_seed: string;
-  constructor(fields: { vault_bump: number, vault_seed: string } | undefined = undefined) {
-    if (fields) {
-      this.vault_bump = fields.vault_bump;
-      this.vault_seed = fields.vault_seed;
+  let transaction = new Transaction()
+
+  if (vault.data.state == VaultState.Inactive) {
+    console.log("Vault is inactive, add activate instruction");
+    const txData1 = new programs.vault.ActivateVault({feePayer: payer.publicKey},
+      {    
+        vault: vault.pubkey,
+        fractionMint: new PublicKey(vault.data.fractionMint),
+        fractionMintAuthority: new PublicKey(vaultMintAuthority),
+        fractionTreasury: new PublicKey(vault.data.fractionTreasury),
+        vaultAuthority: new PublicKey(vault.data.authority),
+        numberOfShares: shareCount
+      }
+    );
+    txData1.instructions.forEach(x => transaction.add(x))
+  }
+
+  // const safetyDepositBoxes = await vault.getSafetyDepositBoxes(connection);
+
+  const txData2 = new programs.vault.MintFractionalShares({feePayer: payer.publicKey},
+    {    
+      vault: vault.pubkey,
+      fractionMint: new PublicKey(vault.data.fractionMint),
+      fractionMintAuthority: new PublicKey(vaultMintAuthority),
+      fractionTreasury: new PublicKey(vault.data.fractionTreasury),
+      store: new PublicKey(tokenStore),
+      vaultAuthority: new PublicKey(vault.data.authority),
+      numberOfShares: shareCount
     }
-  }
+  );
+  
+  txData2.instructions.forEach(x => transaction.add(x))
+
+  console.log("Sending Transaction...")
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [payer],
+  );
+
+  console.log("Tx: ", tx);
 }
 
-const VaultSchema = new Map([
-  [VaultArgs, {
-    kind: 'struct',
-    fields: [
-      ['instruction', 'u8'],
-      ['vault_bump', 'u8'],
-      ['vault_seed', 'string']
-    ]
-  }],
-]);
-
-export class AddTokenArgs {
-  instruction = 2;
-}
-
-const AddTokenSchema = new Map([
-  [AddTokenArgs, {
-    kind: 'struct',
-    fields: [
-      ['instruction', 'u8'],
-    ]
-  }],
-]);
 
 export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: PublicKey): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
