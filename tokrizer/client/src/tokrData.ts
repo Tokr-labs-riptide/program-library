@@ -66,3 +66,29 @@ export class TokrizeArgs {
       ]
     }],
   ]);
+
+  export class FractionalizeArgs {
+    instruction = 3;
+  }
+  
+  export const FractionalizeSchema = new Map([
+    [FractionalizeArgs, {
+      kind: 'struct',
+      fields: [
+        ['instruction', 'u8'],
+      ]
+    }],
+  ]);
+
+  export class SendFractionArgs {
+    instruction = 4;
+  }
+  
+  export const SendFractionSchema = new Map([
+    [SendFractionArgs, {
+      kind: 'struct',
+      fields: [
+        ['instruction', 'u8'],
+      ]
+    }],
+  ]);

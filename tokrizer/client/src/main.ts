@@ -80,6 +80,7 @@ programCommand('send')
     await tokr.sendShare(
       new PublicKey("AUZNHtcU6G4ytxtqafLHFRf9Dy2mMtBjM9YPV2Yekp6L"), // vault address 
       new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums"), // destination
+      new PublicKey("BJeG8PoLpny8bQwo2WbMDWcK3jGXeDPBP2nCLvUBs7Qz"), // token address
       new BN(1),
     );
 
