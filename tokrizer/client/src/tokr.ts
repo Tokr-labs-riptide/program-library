@@ -15,10 +15,12 @@ import {
 import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT } from '@solana/spl-token';
 import fs from 'mz/fs';
 import path from 'path';
+import BN from 'bn.js';
 import * as borsh from 'borsh';
 import { getPayer, getRpcUrl, createKeypairFromFile } from './utils';
-
-import { InitVault, Vault, VaultProgram, SafetyDepositBox } from '@metaplex-foundation/mpl-token-vault';
+import { NodeWallet, programs, actions } from '@metaplex/js';
+import { InitVault, Vault, VaultProgram, SafetyDepositBox, VaultState, WithdrawSharesFromTreasury } from '@metaplex-foundation/mpl-token-vault';
+import { TokrizeArgs, TokrizeSchema, AddTokenArgs, AddTokenSchema, VaultArgs, VaultSchema, SendFractionSchema, SendFractionArgs } from './tokrData';
 
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -148,74 +150,156 @@ export async function checkProgram(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 }
 
-export class TokrizeArgs {
-  instruction = 0;
-  name: string;
-  symbol: string;
-  uri: string;
-  mint_bump: number;
-  mint_seed: string;
-  constructor(fields: { name: string, symbol: string, uri: string, mint_bump: number, mint_seed: string } | undefined = undefined) {
-    if (fields) {
-      this.name = fields.name;
-      this.symbol = fields.symbol;
-      this.uri = fields.uri;
-      this.mint_bump = fields.mint_bump;
-      this.mint_seed = fields.mint_seed;
-    }
+export async function sendShare(vaultAddress: PublicKey, destination: PublicKey, tokenAddress: PublicKey, amount: BN) {
+  
+  console.log("Sending fraction of NFT");
+  console.log("Destination: ", destination.toBase58());
+  console.log("NFT: ", tokenAddress.toBase58());
+  
+  const vault = await programs.vault.Vault.load(connection, vaultAddress);
+
+  const destination_ata = await getTokenWallet(
+      destination,
+      new PublicKey(vault.data.fractionMint),
+  );
+
+  console.log("ATA address:", destination_ata.toBase58())
+
+  const accountInfo = await connection.getAccountInfo(destination_ata);
+
+  if (!accountInfo) {
+    console.log("Creating new ATA for destination");
+    let transaction = new Transaction()
+    transaction.add(
+        createAssociatedTokenAccountInstruction(
+          destination_ata,
+          payer.publicKey,
+          destination,
+          new PublicKey(vault.data.fractionMint),
+        ),
+    );
+
+    const tx1 = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [payer],
+    );
+  
+    console.log("ATA tx:", tx1)
+  
   }
+
+
+  const data = Buffer.from(borsh.serialize(
+    SendFractionSchema,
+    new SendFractionArgs()
+  ));
+
+  const transferAuthorityKey = (await PublicKey.findProgramAddress([Buffer.from("vault"), TOKEN_VAULT_PROGRAM_ID.toBuffer(), vaultAddress.toBuffer()], TOKEN_VAULT_PROGRAM_ID))[0]
+  // const transferAuthorityKey = (await PublicKey.findProgramAddress([Buffer.from("transfer"), vaultAddress.toBuffer(), tokenAddress.toBuffer()], programId))[0]
+  const tokenStoreKey = (await PublicKey.findProgramAddress([Buffer.from("store"), vaultAddress.toBuffer(), tokenAddress.toBuffer()], programId))[0]
+
+  console.log("Transfer Authority: ", transferAuthorityKey.toBase58())
+  const withdrawTx = new WithdrawSharesFromTreasury({ feePayer: payer.publicKey }, {
+    store: tokenStoreKey,
+    vault: vaultAddress,
+    destination: destination_ata,
+    fractionTreasury: new PublicKey(vault.data.fractionTreasury),
+    vaultAuthority: payer.publicKey,
+    transferAuthority: transferAuthorityKey,
+    numberOfShares: amount
+  });
+
+  let transaction = new Transaction()
+  withdrawTx.instructions.forEach(x => transaction.add(x))
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [payer],
+  );
+  // const instruction = new TransactionInstruction(
+  //   {
+  //     keys: [
+  //       { pubkey: tokenAddress, isSigner: false, isWritable: true },
+  //       { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+  //       { pubkey: destination, isSigner: false, isWritable: true },
+  //       { pubkey: destination_ata, isSigner: false, isWritable: true },
+  //       { pubkey: transferAuthorityKey, isSigner: false, isWritable: true },
+  //       { pubkey: vaultAddress, isSigner: false, isWritable: true },
+  //       { pubkey: new PublicKey(vault.data.authority), isSigner: false, isWritable: true },
+  //       { pubkey: new PublicKey(vault.data.fractionMint), isSigner: false, isWritable: true },
+  //       { pubkey: new PublicKey(vault.data.fractionTreasury), isSigner: false, isWritable: true },
+  //       { pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false },
+  //       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+  //       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  //       { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+  //     ],
+  //     programId,
+  //     data
+  //   }
+  // );
+
+  // const tx = await sendAndConfirmTransaction(
+  //   connection,
+  //   new Transaction().add(instruction),
+  //   [payer],
+  // );
+
+  console.log("Tx: ", tx);
 }
 
-const TokrizeSchema = new Map([
-  [TokrizeArgs, {
-    kind: 'struct',
-    fields: [
-      ['instruction', 'u8'],
-      ['name', 'string'],
-      ['symbol', 'string'],
-      ['uri', 'string'],
-      ['mint_bump', 'u8'],
-      ['mint_seed', 'string']
-    ]
-  }],
-]);
+export async function mintFractionalShares(
+  vaultAddress: PublicKey, 
+  vaultMintAuthority: PublicKey, 
+  tokenStore: PublicKey,
+  shareCount: BN
+  ) {
 
+  const vault = await programs.vault.Vault.load(connection, vaultAddress);
 
-export class VaultArgs {
-  instruction = 1;
-  vault_bump: number;
-  vault_seed: string;
-  constructor(fields: { vault_bump: number, vault_seed: string } | undefined = undefined) {
-    if (fields) {
-      this.vault_bump = fields.vault_bump;
-      this.vault_seed = fields.vault_seed;
-    }
+  let transaction = new Transaction()
+
+  if (vault.data.state == VaultState.Inactive) {
+    console.log("Vault is inactive, add activate instruction");
+    const txData1 = new programs.vault.ActivateVault({feePayer: payer.publicKey},
+      {    
+        vault: vault.pubkey,
+        fractionMint: new PublicKey(vault.data.fractionMint),
+        fractionMintAuthority: new PublicKey(vaultMintAuthority),
+        fractionTreasury: new PublicKey(vault.data.fractionTreasury),
+        vaultAuthority: new PublicKey(vault.data.authority),
+        numberOfShares: shareCount
+      }
+    );
+    txData1.instructions.forEach(x => transaction.add(x))
   }
+
+  // const safetyDepositBoxes = await vault.getSafetyDepositBoxes(connection);
+
+  const txData2 = new programs.vault.MintFractionalShares({feePayer: payer.publicKey},
+    {    
+      vault: vault.pubkey,
+      fractionMint: new PublicKey(vault.data.fractionMint),
+      fractionMintAuthority: new PublicKey(vaultMintAuthority),
+      fractionTreasury: new PublicKey(vault.data.fractionTreasury),
+      store: new PublicKey(tokenStore),
+      vaultAuthority: new PublicKey(vault.data.authority),
+      numberOfShares: shareCount
+    }
+  );
+  
+  txData2.instructions.forEach(x => transaction.add(x))
+
+  console.log("Sending Transaction...")
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    transaction,
+    [payer],
+  );
+
+  console.log("Tx: ", tx);
 }
 
-const VaultSchema = new Map([
-  [VaultArgs, {
-    kind: 'struct',
-    fields: [
-      ['instruction', 'u8'],
-      ['vault_bump', 'u8'],
-      ['vault_seed', 'string']
-    ]
-  }],
-]);
-
-export class AddTokenArgs {
-  instruction = 2;
-}
-
-const AddTokenSchema = new Map([
-  [AddTokenArgs, {
-    kind: 'struct',
-    fields: [
-      ['instruction', 'u8'],
-    ]
-  }],
-]);
 
 export async function addTokenToVault(vaultAddress: PublicKey, tokenAddress: PublicKey): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
@@ -404,3 +488,54 @@ export const getTokenWallet = async function (
     )
   )[0];
 };
+
+
+function createAssociatedTokenAccountInstruction(
+  associatedTokenAddress: PublicKey,
+  payer: PublicKey,
+  walletAddress: PublicKey,
+  splTokenMintAddress: PublicKey,
+) {
+  const keys = [
+      {
+          pubkey: payer,
+          isSigner: true,
+          isWritable: true,
+      },
+      {
+          pubkey: associatedTokenAddress,
+          isSigner: false,
+          isWritable: true,
+      },
+      {
+          pubkey: walletAddress,
+          isSigner: false,
+          isWritable: false,
+      },
+      {
+          pubkey: splTokenMintAddress,
+          isSigner: false,
+          isWritable: false,
+      },
+      {
+          pubkey: SystemProgram.programId,
+          isSigner: false,
+          isWritable: false,
+      },
+      {
+          pubkey: TOKEN_PROGRAM_ID,
+          isSigner: false,
+          isWritable: false,
+      },
+      {
+          pubkey: SYSVAR_RENT_PUBKEY,
+          isSigner: false,
+          isWritable: false,
+      },
+  ];
+  return new TransactionInstruction({
+      keys,
+      programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+      data: Buffer.from([]),
+  });
+}

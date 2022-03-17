@@ -15,56 +15,24 @@ const vaultPubKey = 'Ciys8fbcSQSbQqMm91SmnLozdvw3ABBsEgGWHTvW69jb';
 
 const tokenStore = '2jxk6u7QyhwtDajwmCHxZnvBLJydT6cynM9jE6tf2Qcq';
 
-async function mintFractionalShares(shareCount: BN) {
+async function sendToken() {
 
   const vault = await programs.vault.Vault.load(connection, vaultPubKey);
   const payer = await getPayer();
   
-
-  console.log(vault.data.authority);
-  console.log(vault.info.owner.toBase58());
-
-  let transaction = new Transaction()
-
-  if (vault.data.state == VaultState.Inactive) {
-    console.log("Vault is inactive, activatiing");
-    const txData1 = new programs.vault.ActivateVault({feePayer: payer.publicKey},
-      {    
-        vault: vault.pubkey,
-        fractionMint: new PublicKey(vault.data.fractionMint),
-        fractionMintAuthority: new PublicKey(vaultMintAuthority),
-        fractionTreasury: new PublicKey(vault.data.fractionTreasury),
-        vaultAuthority: new PublicKey(vault.data.authority),
-        numberOfShares: shareCount
-      }
-    );
-    txData1.instructions.forEach(x => transaction.add(x))
-  }
-
-  const safetyDepositBoxes = await vault.getSafetyDepositBoxes(connection);
-
-  const txData2 = new programs.vault.MintFractionalShares({feePayer: payer.publicKey},
-    {    
-      vault: vault.pubkey,
-      fractionMint: new PublicKey(vault.data.fractionMint),
-      fractionMintAuthority: new PublicKey(vaultMintAuthority),
-      fractionTreasury: new PublicKey(vault.data.fractionTreasury),
-      store: new PublicKey(tokenStore),
-      vaultAuthority: new PublicKey(vault.data.authority),
-      numberOfShares: shareCount
+  let response = await actions.sendToken(
+    {
+      connection: connection,
+      wallet: new NodeWallet(payer),
+      source: new PublicKey("EP8QgjMVsaZkKHeqE47rXJdU9aUyNi7bJNo9A1QPnGnx"),
+      destination: new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums"),
+      mint: new PublicKey("6V3BzuZtQcaouEjXh72FTaco9xi3uvZFppv9wTtsCfCM"),
+      amount: new BN(1)
     }
-  );
+  )
 
-  txData2.instructions.forEach(x => transaction.add(x))
-
-  const tx = await sendAndConfirmTransaction(
-    connection,
-    transaction,
-    [payer],
-  );
-
-  // console.log("Tx: ", tx);
+  console.log("Tx: ", response.txId);
 }
 
 
-mintFractionalShares(new BN(100));
+sendToken();

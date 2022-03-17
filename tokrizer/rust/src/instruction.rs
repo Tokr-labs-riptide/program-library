@@ -32,5 +32,6 @@ pub enum TokrizerInstruction {
     CreateVault(VaultArgs),
     AddNftToVault,
     Fractionalize(FractionalizeArgs),
+    SendFraction,
 
 }

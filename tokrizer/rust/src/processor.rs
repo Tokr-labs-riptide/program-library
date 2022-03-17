@@ -22,7 +22,7 @@ use mpl_token_metadata::{
 
 use mpl_token_vault::{
     state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, VaultInstruction, AmountArgs},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_withdraw_shares_instruction, VaultInstruction, AmountArgs},
 };
 
 use spl_associated_token_account::{
@@ -54,6 +54,10 @@ pub fn process(
         TokrizerInstruction::Fractionalize(args) => {
             msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
             fractionalize(program_id, accounts, args.number_of_shares);
+        }
+        TokrizerInstruction::SendFraction => {
+            msg!("Send Fraction Share of rNFT... do nothing for now");
+            //send_fraction(program_id, accounts, 1 as u64);
         }
     }
 
@@ -456,11 +460,88 @@ pub fn add_nft_to_vault(
     Ok(())
 }
 
+
+pub fn send_fraction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    number_of_shares: u64
+) -> ProgramResult {
+        // Iterating accounts is safer than indexing
+    let accounts_iter = &mut accounts.iter();
+
+    let token = &mut next_account_info(accounts_iter)?;
+
+    let payer = &mut next_account_info(accounts_iter)?;
+
+    let destination = next_account_info(accounts_iter)?;
+
+    let destination_ata = next_account_info(accounts_iter)?;
+
+    let transfer_authority = next_account_info(accounts_iter)?;
+
+    let vault = next_account_info(accounts_iter)?;
+
+    let vault_authority = next_account_info(accounts_iter)?;
+
+    let fraction_mint = next_account_info(accounts_iter)?;
+
+    let fraction_treasury = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    let token_program = next_account_info(accounts_iter)?;
+
+    let system_program = next_account_info(accounts_iter)?;
+
+    let rent_program = next_account_info(accounts_iter)?;
+
+    let (_transfer_authority_pda, transfer_bump) = Pubkey::find_program_address(&[b"transfer", vault.key.as_ref(), token.key.as_ref()], &program_id);
+
+
+    // todo check if ata already exists
+    // let _result = invoke(
+    //     &create_associated_token_account(
+    //         payer.key,
+    //         destination.key,
+    //         fraction_mint.key, 
+    //     ),
+    //     &[
+    //         payer.clone(), 
+    //         destination_ata.clone(), 
+    //         destination.clone(),
+    //         fraction_mint.clone(), 
+    //         system_program.clone(), 
+    //         token_program.clone(), 
+    //         rent_program.clone()
+    //     ]
+    // );
+
+    msg!("LETS GO");
+    let _result = invoke_signed(
+        &create_withdraw_shares_instruction(
+            *token_vault_program.key,
+            *destination_ata.key,
+            *fraction_treasury.key,
+            *vault.key,
+            *transfer_authority.key,
+            *payer.key,
+            number_of_shares
+        ),
+        accounts,
+        &[&[b"transfer", vault.key.as_ref(), token.key.as_ref(), &[transfer_bump]]]
+    );
+
+
+
+    Ok(())
+}
+
 pub fn fractionalize(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     number_of_shares: u64
 ) -> ProgramResult {
+
 
 
     Ok(())
