@@ -211,7 +211,10 @@ export async function sendShare(vaultAddress: PublicKey, destination: PublicKey,
   });
 
   let transaction = new Transaction()
-  withdrawTx.instructions.forEach(x => transaction.add(x))
+  withdrawTx.instructions.forEach(x => {
+    console.log("TXs:", x)
+    transaction.add(x)
+  })
   const tx = await sendAndConfirmTransaction(
     connection,
     transaction,
@@ -426,14 +429,18 @@ export async function createVault(): Promise<void> {
 
 export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promise<void> {
   console.log('Payer: ', payer.publicKey.toBase58());
+  console.log('destination: ', destination.toBase58());
 
-  let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
+  let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
   console.log("random seed", mintSeed);
   args.mint_seed = mintSeed;
   let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
   const mintAccount = pda[0]
   args.mint_bump = pda[1]
 
+
+  let info = await connection.getAccountInfo(pda[0]);
+  console.log("Info", info);
 
   console.log("mint", mintAccount.toBase58());
   console.log("bump", args.mint_bump);
@@ -468,13 +475,21 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
     }
   );
 
-  const tx = await sendAndConfirmTransaction(
-    connection,
-    new Transaction().add(instruction),
-    [payer],
-  );
 
-  console.log("Transaction id:", tx);
+  let result = await connection.simulateTransaction(new Transaction().add(instruction), [payer]);
+  console.log("Simulate")
+  console.log(result.value.err);
+  if (result.value.err) {
+    console.log("Failed!")
+  }
+
+  // const tx = await sendAndConfirmTransaction(
+  //   connection,
+  //   new Transaction().add(instruction),
+  //   [payer],
+  // );
+
+  // console.log("Transaction id:", tx);
 }
 
 export const getTokenWallet = async function (
