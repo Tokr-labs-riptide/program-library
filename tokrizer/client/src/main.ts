@@ -24,7 +24,7 @@ programCommand('mint')
         mint_bump: NaN,
         mint_seed: ''
       }),
-        new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums")
+        new PublicKey("3K7Sc4zrKsTGUwuMb2NiFQJM4wq9LDonG1iJURDBodrC")
     );
 
     console.log('Success');
