@@ -12,7 +12,7 @@ import {
   Transaction,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT } from '@solana/spl-token';
+import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, Token } from '@solana/spl-token';
 import fs from 'mz/fs';
 import path from 'path';
 import BN from 'bn.js';
@@ -20,7 +20,8 @@ import * as borsh from 'borsh';
 import { getPayer, getRpcUrl, createKeypairFromFile } from './utils';
 import { NodeWallet, programs, actions } from '@metaplex/js';
 import { InitVault, Vault, VaultProgram, SafetyDepositBox, VaultState, WithdrawSharesFromTreasury } from '@metaplex-foundation/mpl-token-vault';
-import { TokrizeArgs, TokrizeSchema, AddTokenArgs, AddTokenSchema, VaultArgs, VaultSchema, SendFractionSchema, SendFractionArgs } from './tokrData';
+import { TokrizeArgs, TokrizeSchema, AddTokenArgs, AddTokenSchema, VaultArgs, VaultSchema, SendFractionSchema, SendFractionArgs, FractionalizeSchema, FractionalizeArgs } from './tokrData';
+import { token } from '@project-serum/anchor/dist/cjs/utils';
 
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -253,50 +254,45 @@ export async function sendShare(vaultAddress: PublicKey, destination: PublicKey,
 
 export async function mintFractionalShares(
   vaultAddress: PublicKey, 
-  vaultMintAuthority: PublicKey, 
-  tokenStore: PublicKey,
-  shareCount: BN
+  shareCount: number
   ) {
 
   const vault = await programs.vault.Vault.load(connection, vaultAddress);
+  const fMint = await connection.getAccountInfo(new PublicKey(vault.data.fractionMint));
 
-  let transaction = new Transaction()
-
-  if (vault.data.state == VaultState.Inactive) {
-    console.log("Vault is inactive, add activate instruction");
-    const txData1 = new programs.vault.ActivateVault({feePayer: payer.publicKey},
-      {    
-        vault: vault.pubkey,
-        fractionMint: new PublicKey(vault.data.fractionMint),
-        fractionMintAuthority: new PublicKey(vaultMintAuthority),
-        fractionTreasury: new PublicKey(vault.data.fractionTreasury),
-        vaultAuthority: new PublicKey(vault.data.authority),
-        numberOfShares: shareCount
-      }
-    );
-    txData1.instructions.forEach(x => transaction.add(x))
+  const rawMint = MintLayout.decode(fMint.data.slice(0, MintLayout.span));
+  if (!rawMint.mintAuthorityOption) {
+    throw new Error("Incorrect Vault Layout")
   }
+  const vaultMintAuthority = new PublicKey(rawMint.mintAuthority);
+  console.log("Fractional Mint Authority:", vaultMintAuthority.toBase58());
 
-  // const safetyDepositBoxes = await vault.getSafetyDepositBoxes(connection);
+  const data = Buffer.from(borsh.serialize(
+    FractionalizeSchema,
+    new FractionalizeArgs({number_of_shares: shareCount})
+  ));
 
-  const txData2 = new programs.vault.MintFractionalShares({feePayer: payer.publicKey},
-    {    
-      vault: vault.pubkey,
-      fractionMint: new PublicKey(vault.data.fractionMint),
-      fractionMintAuthority: new PublicKey(vaultMintAuthority),
-      fractionTreasury: new PublicKey(vault.data.fractionTreasury),
-      store: new PublicKey(tokenStore),
-      vaultAuthority: new PublicKey(vault.data.authority),
-      numberOfShares: shareCount
+  const instruction = new TransactionInstruction(
+    {
+      keys: [
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: vaultAddress, isSigner: false, isWritable: true },
+        { pubkey: new PublicKey(vaultMintAuthority), isSigner: false, isWritable: true },
+        { pubkey: new PublicKey(vault.data.fractionMint), isSigner: false, isWritable: true },
+        { pubkey: new PublicKey(vault.data.fractionTreasury), isSigner: false, isWritable: true },
+        { pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+      ],
+      programId,
+      data: data
     }
   );
-  
-  txData2.instructions.forEach(x => transaction.add(x))
 
   console.log("Sending Transaction...")
   const tx = await sendAndConfirmTransaction(
     connection,
-    transaction,
+    new Transaction().add(instruction),
     [payer],
   );
 
@@ -378,18 +374,18 @@ export async function createVault(): Promise<void> {
 
   console.log("MAX RENT:" + await connection.getMinimumBalanceForRentExemption(Vault.MAX_VAULT_SIZE));
 
-  const vaultAuthority = await Vault.getPDA(vaultKey);
+  const vaultMintAuthority = await Vault.getPDA(vaultKey);
 
   const externalPricingAccountKey = (await PublicKey.findProgramAddress([Buffer.from("external"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
 
   const fractionMintkey = (await PublicKey.findProgramAddress([Buffer.from("fraction"), vaultKey.toBuffer(), payer.publicKey.toBuffer()], programId))[0]
 
-  const redeemTreasuryKey = (await PublicKey.findProgramAddress([vaultAuthority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), NATIVE_MINT.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
+  const redeemTreasuryKey = (await PublicKey.findProgramAddress([vaultMintAuthority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), NATIVE_MINT.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
-  const fractionTreasuryKey = (await PublicKey.findProgramAddress([vaultAuthority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), fractionMintkey.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
+  const fractionTreasuryKey = (await PublicKey.findProgramAddress([vaultMintAuthority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), fractionMintkey.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
   console.log("vaultKey:", vaultKey.toBase58());
-  console.log("vaultAuthority:", vaultAuthority.toBase58());
+  console.log("vaultMintAuthority:", vaultMintAuthority.toBase58());
   console.log("externalPricingAccountKey:", externalPricingAccountKey.toBase58());
   console.log("fractionMintkey:", fractionMintkey.toBase58());
   console.log("redeemTreasuryKey:", redeemTreasuryKey.toBase58());
@@ -401,7 +397,7 @@ export async function createVault(): Promise<void> {
       keys: [
         { pubkey: payer.publicKey, isSigner: true, isWritable: true },
         { pubkey: vaultKey, isSigner: false, isWritable: true },
-        { pubkey: vaultAuthority, isSigner: false, isWritable: true },
+        { pubkey: vaultMintAuthority, isSigner: false, isWritable: true },
         { pubkey: externalPricingAccountKey, isSigner: false, isWritable: true },
         { pubkey: fractionMintkey, isSigner: false, isWritable: true },
         { pubkey: redeemTreasuryKey, isSigner: false, isWritable: true },
@@ -483,13 +479,13 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
     console.log("Failed!")
   }
 
-  // const tx = await sendAndConfirmTransaction(
-  //   connection,
-  //   new Transaction().add(instruction),
-  //   [payer],
-  // );
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer],
+  );
 
-  // console.log("Transaction id:", tx);
+  console.log("Transaction id:", tx);
 }
 
 export const getTokenWallet = async function (

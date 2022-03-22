@@ -22,7 +22,7 @@ use mpl_token_metadata::{
 
 use mpl_token_vault::{
     state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_withdraw_shares_instruction, VaultInstruction, AmountArgs},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_withdraw_shares_instruction, create_mint_shares_instruction, VaultInstruction, AmountArgs},
 };
 
 use spl_associated_token_account::{
@@ -541,7 +541,33 @@ pub fn fractionalize(
     accounts: &[AccountInfo],
     number_of_shares: u64
 ) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
 
+    let payer = &mut next_account_info(accounts_iter)?;
+
+    let vault = next_account_info(accounts_iter)?;
+
+    let vault_mint_authority = next_account_info(accounts_iter)?;
+
+    let fraction_mint = next_account_info(accounts_iter)?;
+
+    let fraction_treasury = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    
+    let _result = invoke(
+        &create_mint_shares_instruction(
+            *token_vault_program.key,
+            *fraction_treasury.key,
+            *fraction_mint.key,
+            *vault.key,
+            *vault_mint_authority.key,
+            *payer.key,
+            number_of_shares
+        ),
+        accounts
+    );
 
 
     Ok(())

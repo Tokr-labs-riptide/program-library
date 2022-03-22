@@ -48,8 +48,8 @@ programCommand('vaultNft')
     await initialize();
 
     await tokr.addTokenToVault(
-      new PublicKey("AUZNHtcU6G4ytxtqafLHFRf9Dy2mMtBjM9YPV2Yekp6L"), // vault address 
-      new PublicKey("BJeG8PoLpny8bQwo2WbMDWcK3jGXeDPBP2nCLvUBs7Qz"), // token address
+      new PublicKey("fYiJMqhvD1dDZs6i78z8XrrzvZjGUuUJivjpohrD619"), // vault address 
+      new PublicKey("yHbHyrK27eLCiXBY2b5KMAUSJvK9HajZU1fSBxDtRQg"), // token address
     );
 
     console.log('Success');
@@ -62,10 +62,9 @@ programCommand('fractionalize')
     await initialize();
 
     await tokr.mintFractionalShares(
-      new PublicKey("AvLtCwsoqXe2jr2rQ1wwvXF8LD6g9PcR8Qz8ygy5ARmF"), // vault address 
-      new PublicKey("3vW8B6qkYZ87ARZgo5XSbXaJkDVAzWXxU2mEqB8ejkBH"), // vault mint authority
-      new PublicKey("EKCMy4ZTe2P6VcMtowYaFCRjsf953uv4p8waDb24gamh"), // token store
-      new BN(100)
+      new PublicKey("fYiJMqhvD1dDZs6i78z8XrrzvZjGUuUJivjpohrD619"), // vault address 
+      new PublicKey("721LrCcbvyTd7xvtBwfy5Fv5fLxeHKrA25NU8utw9vAD"), // vault mint authority
+      100,
     );
 
     console.log('Success');

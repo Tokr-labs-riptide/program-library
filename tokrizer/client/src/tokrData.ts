@@ -69,6 +69,12 @@ export class TokrizeArgs {
 
   export class FractionalizeArgs {
     instruction = 3;
+    number_of_shares: number;
+    constructor(fields: { number_of_shares: number } | undefined = undefined) {
+      if (fields) {
+        this.number_of_shares = fields.number_of_shares;
+      }
+    }
   }
   
   export const FractionalizeSchema = new Map([
@@ -76,6 +82,7 @@ export class TokrizeArgs {
       kind: 'struct',
       fields: [
         ['instruction', 'u8'],
+        ['number_of_shares', 'u8'],
       ]
     }],
   ]);
