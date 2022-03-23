@@ -13,8 +13,8 @@ use solana_program::{
 };
 use spl_token::{
     self,
-    instruction::{approve, initialize_account, initialize_mint, mint_to, revoke},
-    state::{Account, AccountState, Mint},
+    instruction::{approve, initialize_account, initialize_mint, mint_to},
+    state::{Account, Mint},
 };
 
 use mpl_token_vault::{
@@ -26,7 +26,7 @@ use mpl_token_vault::{
     state::{Vault, VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
 };
 
-use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
+use spl_associated_token_account::{create_associated_token_account};
 
 use crate::instruction::TokrizerInstruction;
 
@@ -45,7 +45,7 @@ pub fn process(
                 args.symbol,
                 args.uri
             );
-            tokrize(
+            mint_nft(
                 program_id,
                 accounts,
                 args.name,
@@ -53,33 +53,31 @@ pub fn process(
                 args.uri,
                 args.mint_bump,
                 args.mint_seed,
-            );
+            )
         }
         TokrizerInstruction::CreateVault(args) => {
             msg!("Create Vault Instruction!");
-            create_vault(program_id, accounts, args.vault_seed, args.vault_bump);
+            create_vault(program_id, accounts, args.vault_seed, args.vault_bump)
         }
         TokrizerInstruction::AddNftToVault => {
             msg!("Add NFT To Vault Instruction!");
-            add_nft_to_vault(program_id, accounts);
+            add_nft_to_vault(program_id, accounts)
         }
         TokrizerInstruction::Fractionalize(args) => {
             msg!(
                 "Fractionalize NFT Instruction! NumberOfShares: {}",
                 args.number_of_shares
             );
-            fractionalize(program_id, accounts, args.number_of_shares);
+            fractionalize(program_id, accounts, args.number_of_shares)
         }
         TokrizerInstruction::SendShare(args) => {
             msg!("Send Fraction {} Shares of rNFT", args.number_of_shares);
-            send_share(program_id, accounts, args.number_of_shares);
+            send_share(program_id, accounts, args.number_of_shares)
         }
     }
-
-    Ok(())
 }
 
-pub fn tokrize(
+pub fn mint_nft(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     name: String,
@@ -88,7 +86,7 @@ pub fn tokrize(
     mint_bump: u8,
     mint_seed: String,
 ) -> ProgramResult {
-    // Iterating accounts is safer than indexing
+
     let accounts_iter = &mut accounts.iter();
 
     let payer = next_account_info(accounts_iter)?;
@@ -112,7 +110,7 @@ pub fn tokrize(
     let rent_key = next_account_info(accounts_iter)?;
 
     // todo check if mint input is correct
-    msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
+    //msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
 
     // todo check if metadata input is correct
     let (metadata_key, metadata_bump) = Pubkey::find_program_address(
@@ -239,7 +237,7 @@ pub fn create_vault(
 
     let vault = next_account_info(accounts_iter)?;
 
-    let vault_authority = next_account_info(accounts_iter)?;
+    let vault_mint_authority = next_account_info(accounts_iter)?;
 
     let external_pricing_acct = next_account_info(accounts_iter)?;
 
@@ -332,8 +330,8 @@ pub fn create_vault(
         &initialize_mint(
             &spl_token::id(),
             fraction_mint.key,
-            vault_authority.key,
-            Some(vault_authority.key),
+            vault_mint_authority.key,
+            Some(vault_mint_authority.key),
             0,
         )?,
         accounts,
@@ -348,13 +346,13 @@ pub fn create_vault(
     let _result = invoke(
         &create_associated_token_account(
             payer.key,
-            vault_authority.key,
+            vault_mint_authority.key,
             &spl_token::native_mint::ID,
         ),
         &[
             payer.clone(),
             redeem_treasury_ata.clone(),
-            vault_authority.clone(),
+            vault_mint_authority.clone(),
             native_mint_program.clone(),
             system_program.clone(),
             token_program.clone(),
@@ -363,11 +361,11 @@ pub fn create_vault(
     );
 
     let _result = invoke(
-        &create_associated_token_account(payer.key, vault_authority.key, fraction_mint.key),
+        &create_associated_token_account(payer.key, vault_mint_authority.key, fraction_mint.key),
         &[
             payer.clone(),
             fraction_treasury_ata.clone(),
-            vault_authority.clone(),
+            vault_mint_authority.clone(),
             fraction_mint.clone(),
             system_program.clone(),
             token_program.clone(),
@@ -418,7 +416,7 @@ pub fn create_vault(
 }
 
 pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    // Iterating accounts is safer than indexing
+
     let accounts_iter = &mut accounts.iter();
 
     let token = next_account_info(accounts_iter)?;
@@ -489,8 +487,8 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         &approve(
             token_program.key,
             token_ata.key,
-            transfer_authority.key, // todo is the payer of the authority
-            payer.key,              // todo change to treasury
+            transfer_authority.key,
+            payer.key,
             &[],
             1 as u64,
         )
@@ -547,7 +545,6 @@ pub fn send_share(
     accounts: &[AccountInfo],
     number_of_shares: u64,
 ) -> ProgramResult {
-    // Iterating accounts is safer than indexing
     let accounts_iter = &mut accounts.iter();
 
     let token = &mut next_account_info(accounts_iter)?;
@@ -604,7 +601,7 @@ pub fn send_share(
             *fraction_treasury.key,
             *vault.key,
             *transfer_authority.key,
-            *payer.key,
+            *vault_authority.key,
             number_of_shares,
         ),
         accounts,
@@ -620,7 +617,7 @@ pub fn send_share(
 }
 
 pub fn fractionalize(
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     accounts: &[AccountInfo],
     number_of_shares: u64,
 ) -> ProgramResult {
@@ -671,6 +668,9 @@ pub fn fractionalize(
     Ok(())
 }
 
+
+// I had to write this because mpl_token_vault::instruction::create_add_token_to_inactive_vault_instruction
+// does not work!
 #[allow(clippy::too_many_arguments)]
 pub fn create_add_token_to_inactive_vault_instruction2(
     program_id: Pubkey,
