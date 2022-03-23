@@ -1,5 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
-use mpl_token_metadata::{instruction::create_metadata_accounts_v2, state::Creator};
+use mpl_token_metadata::{instruction::create_metadata_accounts_v2, state::{Creator, PREFIX as META_PREFIX}};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -111,16 +111,29 @@ pub fn mint_nft(
 
     // todo check if mint input is correct
     //msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
+    let mint_signer_seeds = &[
+        mint_seed.as_bytes(),
+        payer.key.as_ref(),
+        destination.key.as_ref(),
+        &[mint_bump],
+    ];
 
     // todo check if metadata input is correct
     let (metadata_key, metadata_bump) = Pubkey::find_program_address(
         &[
-            b"metadata",
+            META_PREFIX.as_bytes(),
             metadata_program.key.as_ref(),
             mint_input.key.as_ref(),
         ],
         &metadata_program.key,
     );
+
+    let metadata_signer_seeds = &[
+        META_PREFIX.as_bytes(),
+        metadata_program.key.as_ref(),
+        mint_input.key.as_ref(),
+        &[metadata_bump],
+    ];
 
     // let rent = Rent {
     //     lamports_per_byte_year: Mint::LEN as u64,
@@ -138,12 +151,7 @@ pub fn mint_nft(
             &spl_token::id(),
         ),
         accounts,
-        &[&[
-            mint_seed.as_bytes(),
-            payer.key.as_ref(),
-            destination.key.as_ref(),
-            &[mint_bump],
-        ]],
+        &[mint_signer_seeds],
     );
 
     let _result = invoke_signed(
@@ -155,12 +163,7 @@ pub fn mint_nft(
             0,
         )?,
         accounts,
-        &[&[
-            mint_seed.as_bytes(),
-            payer.key.as_ref(),
-            destination.key.as_ref(),
-            &[mint_bump],
-        ]],
+        &[mint_signer_seeds],
     );
 
     let _result = invoke(
@@ -201,12 +204,7 @@ pub fn mint_nft(
             None,
         ),
         accounts,
-        &[&[
-            b"metadata",
-            metadata_program.key.as_ref(),
-            mint_input.key.as_ref(),
-            &[metadata_bump],
-        ]],
+        &[metadata_signer_seeds],
     );
 
     let _result = invoke(
@@ -214,7 +212,7 @@ pub fn mint_nft(
             &spl_token::id(),
             mint_input.key,
             token_ata_input.key,
-            payer.key,
+            destination.key,
             &[&payer.key],
             1 as u64,
         )?,
