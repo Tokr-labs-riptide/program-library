@@ -26,12 +26,18 @@ pub struct FractionalizeArgs {
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
+pub struct SendShareArgs {
+    pub number_of_shares: u64,
+}
+
+#[repr(C)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub enum TokrizerInstruction {
 
     MintTokrNft(MintArgs),
     CreateVault(VaultArgs),
     AddNftToVault,
     Fractionalize(FractionalizeArgs),
-    SendFraction,
+    SendShare(SendShareArgs),
 
 }

@@ -72,9 +72,9 @@ programCommand('send')
 
     await tokr.sendShare(
       new PublicKey("Bn45fuw9BZrYb9WmnVxs6Gcutm9bJA9UgiW1bn19FiqL"), // vault address 
-      new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums"), // destination
+      new PublicKey("BFuNKFd7cjL1YCMoiicsbfpyeDfFGiKSwhyzTu6PA8CA"), // destination
       new PublicKey("45sujG35agdAAz9mNRHXWJxFZhSse5UxiBiQPKuztTjo"), // token address
-      new BN(2),
+      3,
     );
 
     console.log('Success');
