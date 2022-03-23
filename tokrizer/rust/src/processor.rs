@@ -21,8 +21,8 @@ use mpl_token_metadata::{
 };
 
 use mpl_token_vault::{
-    state::{VaultState, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
-    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_withdraw_shares_instruction, create_mint_shares_instruction, VaultInstruction, AmountArgs},
+    state::{VaultState, Vault, MAX_EXTERNAL_ACCOUNT_SIZE, MAX_VAULT_SIZE},
+    instruction::{create_update_external_price_account_instruction, create_init_vault_instruction, create_withdraw_shares_instruction, create_mint_shares_instruction, create_activate_vault_instruction, VaultInstruction, AmountArgs},
 };
 
 use spl_associated_token_account::{
@@ -516,7 +516,6 @@ pub fn send_fraction(
     //     ]
     // );
 
-    msg!("LETS GO");
     let _result = invoke_signed(
         &create_withdraw_shares_instruction(
             *token_vault_program.key,
@@ -545,7 +544,7 @@ pub fn fractionalize(
 
     let payer = &mut next_account_info(accounts_iter)?;
 
-    let vault = next_account_info(accounts_iter)?;
+    let vault_info = next_account_info(accounts_iter)?;
 
     let vault_mint_authority = next_account_info(accounts_iter)?;
 
@@ -555,13 +554,29 @@ pub fn fractionalize(
 
     let token_vault_program = next_account_info(accounts_iter)?;
 
-    
+    let vault = Vault::from_account_info(vault_info)?;
+
+    if vault.state == VaultState::Inactive {
+        let _result = invoke(
+            &create_activate_vault_instruction(
+                *token_vault_program.key,
+                *vault_info.key,
+                *fraction_mint.key,
+                *fraction_treasury.key,
+                *vault_mint_authority.key,
+                *payer.key,
+                number_of_shares
+            ),
+            accounts
+        );
+    }
+
     let _result = invoke(
         &create_mint_shares_instruction(
             *token_vault_program.key,
             *fraction_treasury.key,
             *fraction_mint.key,
-            *vault.key,
+            *vault_info.key,
             *vault_mint_authority.key,
             *payer.key,
             number_of_shares

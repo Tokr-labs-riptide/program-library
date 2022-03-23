@@ -62,8 +62,7 @@ programCommand('fractionalize')
     await initialize();
 
     await tokr.mintFractionalShares(
-      new PublicKey("fYiJMqhvD1dDZs6i78z8XrrzvZjGUuUJivjpohrD619"), // vault address 
-      new PublicKey("721LrCcbvyTd7xvtBwfy5Fv5fLxeHKrA25NU8utw9vAD"), // vault mint authority
+      new PublicKey("GjBf5FSZsYfA4Htjtftqu5sXgpMkvbPw7wT5iBffLTu6"), // vault address 
       100,
     );
 

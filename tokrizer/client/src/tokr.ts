@@ -281,6 +281,7 @@ export async function mintFractionalShares(
         { pubkey: new PublicKey(vault.data.fractionMint), isSigner: false, isWritable: true },
         { pubkey: new PublicKey(vault.data.fractionTreasury), isSigner: false, isWritable: true },
         { pubkey: TOKEN_VAULT_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
       ],
