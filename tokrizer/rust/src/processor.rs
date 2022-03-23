@@ -12,7 +12,7 @@ use solana_program::{
 use spl_token::{
     self,
     instruction::{initialize_mint, mint_to, approve, revoke, initialize_account},
-    state::{Mint, Account}
+    state::{Mint, Account, AccountState}
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use mpl_token_metadata::{
@@ -55,9 +55,9 @@ pub fn process(
             msg!("Fractionalize NFT Instruction! NumberOfShares: {}", args.number_of_shares);
             fractionalize(program_id, accounts, args.number_of_shares);
         }
-        TokrizerInstruction::SendFraction => {
-            msg!("Send Fraction Share of rNFT... do nothing for now");
-            //send_fraction(program_id, accounts, 1 as u64);
+        TokrizerInstruction::SendShare(args) => {
+            msg!("Send Fraction {} Shares of rNFT", args.number_of_shares);
+            send_share(program_id, accounts, args.number_of_shares);
         }
     }
 
@@ -461,7 +461,7 @@ pub fn add_nft_to_vault(
 }
 
 
-pub fn send_fraction(
+pub fn send_share(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     number_of_shares: u64
@@ -497,24 +497,25 @@ pub fn send_fraction(
 
     let (_transfer_authority_pda, transfer_bump) = Pubkey::find_program_address(&[b"transfer", vault.key.as_ref(), token.key.as_ref()], &program_id);
 
-
-    // todo check if ata already exists
-    // let _result = invoke(
-    //     &create_associated_token_account(
-    //         payer.key,
-    //         destination.key,
-    //         fraction_mint.key, 
-    //     ),
-    //     &[
-    //         payer.clone(), 
-    //         destination_ata.clone(), 
-    //         destination.clone(),
-    //         fraction_mint.clone(), 
-    //         system_program.clone(), 
-    //         token_program.clone(), 
-    //         rent_program.clone()
-    //     ]
-    // );
+    let token_acct = Account::unpack(&destination_ata.data.borrow());
+    if !token_acct.is_ok() {
+        let _result = invoke(
+            &create_associated_token_account(
+                payer.key,
+                destination.key,
+                fraction_mint.key, 
+            ),
+            &[
+                payer.clone(), 
+                destination_ata.clone(), 
+                destination.clone(),
+                fraction_mint.clone(), 
+                system_program.clone(), 
+                token_program.clone(), 
+                rent_program.clone()
+            ]
+        );
+    }
 
     let _result = invoke_signed(
         &create_withdraw_shares_instruction(
