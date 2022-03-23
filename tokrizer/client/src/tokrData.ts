@@ -5,7 +5,7 @@ export class TokrizeArgs {
     uri: string;
     mint_bump: number;
     mint_seed: string;
-    constructor(fields: { name: string, symbol: string, uri: string, mint_bump: number, mint_seed: string } | undefined = undefined) {
+    constructor(fields: { name: string, symbol: string, uri: string, mint_bump?: number, mint_seed?: string } | undefined = undefined) {
       if (fields) {
         this.name = fields.name;
         this.symbol = fields.symbol;

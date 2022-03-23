@@ -426,37 +426,56 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
   console.log('Payer: ', payer.publicKey.toBase58());
   console.log('destination: ', destination.toBase58());
 
+  console.log("Begin simulating transaction to find usable mint PDA seed");
+  let instruction = await createMintNftInstruction(args, destination)  
+  let isSuccess = false;
+  while (!isSuccess) {
+      let tx = new Transaction()
+      tx.add(instruction)
+      tx.feePayer = payer.publicKey
+
+      let result = await connection.simulateTransaction(tx);
+      if (result.value.err) {
+          console.log("Simulation Failed! try again")
+          instruction = await createMintNftInstruction(args, destination)  
+      } else {
+          console.log("Simulation Success!")
+          isSuccess = true;
+      }
+  }
+
+  const tx = await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer],
+  );
+
+  console.log("Transaction id:", tx);
+}
+
+async function createMintNftInstruction(args: TokrizeArgs, destination: PublicKey) {
   let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
   console.log("random seed", mintSeed);
   args.mint_seed = mintSeed;
-  let pda = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
-  const mintAccount = pda[0]
-  args.mint_bump = pda[1]
-
-
-  let info = await connection.getAccountInfo(pda[0]);
-  console.log("Info", info);
-
-  console.log("mint", mintAccount.toBase58());
-  console.log("bump", args.mint_bump);
+  let [mintKey, mintBump] = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
+  args.mint_bump = mintBump;
 
   const data = Buffer.from(borsh.serialize(
     TokrizeSchema,
     args
   ));
 
-  const metadataAccount = (await PublicKey.findProgramAddress([Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], TOKEN_METADATA_PROGRAM_ID))[0];
+  const metadataAccount = (await PublicKey.findProgramAddress([Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintKey.toBuffer()], TOKEN_METADATA_PROGRAM_ID))[0];
 
-  const tokenAta = (await PublicKey.findProgramAddress([destination.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintAccount.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
+  const tokenAta = (await PublicKey.findProgramAddress([destination.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mintKey.toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID))[0]
 
-
-  const instruction = new TransactionInstruction(
+  return new TransactionInstruction(
     {
       keys: [
         { pubkey: payer.publicKey, isSigner: true, isWritable: true },
         { pubkey: destination, isSigner: false, isWritable: true },
         { pubkey: payer.publicKey, isSigner: true, isWritable: true },
-        { pubkey: mintAccount, isSigner: false, isWritable: true },
+        { pubkey: mintKey, isSigner: false, isWritable: true },
         { pubkey: metadataAccount, isSigner: false, isWritable: true },
         { pubkey: tokenAta, isSigner: false, isWritable: true },
         { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
@@ -469,23 +488,8 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
       data: data
     }
   );
-
-
-  let result = await connection.simulateTransaction(new Transaction().add(instruction), [payer]);
-  console.log("Simulate")
-  console.log(result.value.err);
-  if (result.value.err) {
-    console.log("Failed!")
-  }
-
-  const tx = await sendAndConfirmTransaction(
-    connection,
-    new Transaction().add(instruction),
-    [payer],
-  );
-
-  console.log("Transaction id:", tx);
 }
+
 
 export const getTokenWallet = async function (
   wallet: PublicKey,

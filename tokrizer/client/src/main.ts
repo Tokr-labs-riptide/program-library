@@ -15,16 +15,11 @@ programCommand('mint')
     await initialize()
 
     await tokr.mintNft(new TokrizeArgs({
-        // name: 'smaABC',
-        // symbol: 'worlda',
-        // uri: 'www.gaasd.com'
         name: 'This is an NFT',
         symbol: 'rNFT',
-        uri: 'https://fazymvttg4pmy7ebypj67iadpiro3z6wxxzfwmmu7modia2ttwha.arweave.net/KDOGVnM3Hsx8gcPT76ADeiLt59a98lsxlPscNANTnY4/',
-        mint_bump: NaN,
-        mint_seed: ''
+        uri: 'https://fazymvttg4pmy7ebypj67iadpiro3z6wxxzfwmmu7modia2ttwha.arweave.net/KDOGVnM3Hsx8gcPT76ADeiLt59a98lsxlPscNANTnY4/'
       }),
-        new PublicKey("3K7Sc4zrKsTGUwuMb2NiFQJM4wq9LDonG1iJURDBodrC")
+        new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums")
     );
 
     console.log('Success');
@@ -48,8 +43,8 @@ programCommand('vaultNft')
     await initialize();
 
     await tokr.addTokenToVault(
-      new PublicKey("fYiJMqhvD1dDZs6i78z8XrrzvZjGUuUJivjpohrD619"), // vault address 
-      new PublicKey("yHbHyrK27eLCiXBY2b5KMAUSJvK9HajZU1fSBxDtRQg"), // token address
+      new PublicKey("Bn45fuw9BZrYb9WmnVxs6Gcutm9bJA9UgiW1bn19FiqL"), // vault address 
+      new PublicKey("45sujG35agdAAz9mNRHXWJxFZhSse5UxiBiQPKuztTjo"), // token address
     );
 
     console.log('Success');
@@ -62,7 +57,7 @@ programCommand('fractionalize')
     await initialize();
 
     await tokr.mintFractionalShares(
-      new PublicKey("GjBf5FSZsYfA4Htjtftqu5sXgpMkvbPw7wT5iBffLTu6"), // vault address 
+      new PublicKey("Bn45fuw9BZrYb9WmnVxs6Gcutm9bJA9UgiW1bn19FiqL"), // vault address 
       100,
     );
 
@@ -76,10 +71,10 @@ programCommand('send')
     await initialize();
 
     await tokr.sendShare(
-      new PublicKey("AvLtCwsoqXe2jr2rQ1wwvXF8LD6g9PcR8Qz8ygy5ARmF"), // vault address 
+      new PublicKey("Bn45fuw9BZrYb9WmnVxs6Gcutm9bJA9UgiW1bn19FiqL"), // vault address 
       new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums"), // destination
-      new PublicKey("7djvEfzQvQhttBpSrYaJJTjZCfVaiDcCTmSEufvkgGoc"), // token address
-      new BN(1),
+      new PublicKey("45sujG35agdAAz9mNRHXWJxFZhSse5UxiBiQPKuztTjo"), // token address
+      new BN(2),
     );
 
     console.log('Success');
@@ -107,11 +102,3 @@ async function initialize() {
 }
 
 program.parse(process.argv);
-
-// main().then(
-//   () => process.exit(),
-//   err => {
-//     console.error(err);
-//     process.exit(-1);
-//   },
-// );
