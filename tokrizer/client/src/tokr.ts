@@ -12,7 +12,7 @@ import {
   Transaction,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
-import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, Token } from '@solana/spl-token';
+import { MintLayout, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT } from '@solana/spl-token';
 import fs from 'mz/fs';
 import path from 'path';
 import BN from 'bn.js';
@@ -21,8 +21,6 @@ import { getPayer, getRpcUrl, createKeypairFromFile } from './utils';
 import { NodeWallet, programs, actions } from '@metaplex/js';
 import { InitVault, Vault, VaultProgram, SafetyDepositBox, VaultState, WithdrawSharesFromTreasury } from '@metaplex-foundation/mpl-token-vault';
 import { TokrizeArgs, TokrizeSchema, AddTokenArgs, AddTokenSchema, VaultArgs, VaultSchema, SendFractionSchema, SendFractionArgs, FractionalizeSchema, FractionalizeArgs } from './tokrData';
-import { token } from '@project-serum/anchor/dist/cjs/utils';
-
 
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" // devent
