@@ -497,10 +497,8 @@ pub fn send_share(
 
     let (_transfer_authority_pda, transfer_bump) = Pubkey::find_program_address(&[b"transfer", vault.key.as_ref(), token.key.as_ref()], &program_id);
 
-    msg!("UNPACK");
     let token_acct = Account::unpack(&destination_ata.data.borrow());
     if !token_acct.is_ok() {
-        msg!("Create ATA");
         let _result = invoke(
             &create_associated_token_account(
                 payer.key,
@@ -518,8 +516,6 @@ pub fn send_share(
             ]
         );
     }
-
-    msg!("Gramble");
 
     let _result = invoke_signed(
         &create_withdraw_shares_instruction(
