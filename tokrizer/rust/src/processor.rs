@@ -3,6 +3,7 @@ use mpl_token_metadata::{instruction::create_metadata_accounts_v2, state::{Creat
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_error::ProgramError,
     instruction::{AccountMeta, Instruction},
     msg,
     program::{invoke, invoke_signed},
@@ -96,11 +97,11 @@ pub fn mint_nft(
 
     let creator = next_account_info(accounts_iter)?;
 
-    let mint_input = next_account_info(accounts_iter)?;
+    let mint = next_account_info(accounts_iter)?;
 
-    let _metadata_acct = next_account_info(accounts_iter)?;
+    let metadata_account = next_account_info(accounts_iter)?;
 
-    let token_ata_input = next_account_info(accounts_iter)?;
+    let token_account = next_account_info(accounts_iter)?;
 
     let token_program = next_account_info(accounts_iter)?;
 
@@ -108,10 +109,8 @@ pub fn mint_nft(
 
     let system_program = next_account_info(accounts_iter)?;
 
-    let rent_key = next_account_info(accounts_iter)?;
+    let rent_program = next_account_info(accounts_iter)?;
 
-    // todo check if mint input is correct
-    //msg!("mint_pda: {}, bump:{} ", mint_input.key, mint_bump);
     let mint_signer_seeds = &[
         mint_seed.as_bytes(),
         payer.key.as_ref(),
@@ -120,62 +119,66 @@ pub fn mint_nft(
     ];
 
     // todo check if metadata input is correct
-    let (metadata_key, metadata_bump) = Pubkey::find_program_address(
+    let (metadata_pda_key, metadata_bump) = Pubkey::find_program_address(
         &[
             META_PREFIX.as_bytes(),
             metadata_program.key.as_ref(),
-            mint_input.key.as_ref(),
+            mint.key.as_ref(),
         ],
         &metadata_program.key,
     );
 
+    if *metadata_account.key != metadata_pda_key {
+        return Err(ProgramError::IllegalOwner);
+    }
+
     let metadata_signer_seeds = &[
         META_PREFIX.as_bytes(),
         metadata_program.key.as_ref(),
-        mint_input.key.as_ref(),
+        mint.key.as_ref(),
         &[metadata_bump],
     ];
 
     // Create Mint Account
-    let rent = &Rent::from_account_info(rent_key)?;
-    let _result = invoke_signed(
+    let rent = &Rent::from_account_info(rent_program)?;
+    invoke_signed(
         &system_instruction::create_account(
             payer.key,
-            mint_input.key,
+            mint.key,
             rent.minimum_balance(Mint::LEN),
             Mint::LEN as u64,
             &spl_token::id(),
         ),
         accounts,
         &[mint_signer_seeds],
-    );
+    )?;
 
     // Init Mint Account
-    let _result = invoke_signed(
+    invoke_signed(
         &initialize_mint(
             &spl_token::id(),
-            mint_input.key,
+            mint.key,
             payer.key,
             Some(program_id),
             0,
         )?,
         accounts,
         &[mint_signer_seeds],
-    );
+    )?;
 
     // Create Associated Token Account for new Mint and Destination
-    let _result = invoke(
-        &create_associated_token_account(payer.key, destination.key, mint_input.key),
+    invoke(
+        &create_associated_token_account(payer.key, destination.key, mint.key),
         &[
             payer.clone(),
-            token_ata_input.clone(),
+            token_account.clone(),
             destination.clone(),
-            mint_input.clone(),
+            mint.clone(),
             system_program.clone(),
             token_program.clone(),
-            rent_key.clone(),
+            rent_program.clone(),
         ],
-    );
+    )?;
 
     // Create Metaplex Metadata Account for new Mint
     let creator = Creator {
@@ -183,11 +186,11 @@ pub fn mint_nft(
         verified: true,
         share: 100 as u8,
     };
-    let _result = invoke_signed(
+    invoke_signed(
         &create_metadata_accounts_v2(
             *metadata_program.key,
-            metadata_key,
-            *mint_input.key,
+            *metadata_account.key,
+            *mint.key,
             *payer.key,
             *payer.key,
             *payer.key,
@@ -203,20 +206,20 @@ pub fn mint_nft(
         ),
         accounts,
         &[metadata_signer_seeds],
-    );
+    )?;
 
     // Mint the NFT
-    let _result = invoke(
+    invoke(
         &mint_to(
             &spl_token::id(),
-            mint_input.key,
-            token_ata_input.key,
+            mint.key,
+            token_account.key,
             destination.key,
             &[&payer.key],
             1 as u64,
         )?,
         accounts,
-    );
+    )?;
 
     Ok(())
 }
@@ -232,6 +235,8 @@ pub fn create_vault(
 
     let payer = next_account_info(accounts_iter)?;
 
+    let vault_authority = next_account_info(accounts_iter)?;
+
     let vault = next_account_info(accounts_iter)?;
 
     let vault_mint_authority = next_account_info(accounts_iter)?;
@@ -240,9 +245,9 @@ pub fn create_vault(
 
     let fraction_mint = next_account_info(accounts_iter)?;
 
-    let redeem_treasury_ata = next_account_info(accounts_iter)?;
+    let redeem_treasury = next_account_info(accounts_iter)?;
 
-    let fraction_treasury_ata = next_account_info(accounts_iter)?;
+    let fraction_treasury = next_account_info(accounts_iter)?;
 
     let token_vault_program = next_account_info(accounts_iter)?;
 
@@ -287,7 +292,7 @@ pub fn create_vault(
 
     // Create External Pricing Account
     let rent = &Rent::from_account_info(rent_program)?;
-    let _result = invoke_signed(
+    invoke_signed(
         &system_instruction::create_account(
             payer.key,
             external_pricing_acct.key,
@@ -297,10 +302,10 @@ pub fn create_vault(
         ),
         accounts,
         &[external_pricing_signing_seeds],
-    );
+    )?;
 
     // Initialize External Pricing Account
-    let _result = invoke_signed(
+    invoke_signed(
         &create_update_external_price_account_instruction(
             *token_vault_program.key,
             *external_pricing_acct.key,
@@ -310,10 +315,10 @@ pub fn create_vault(
         ),
         accounts,
         &[external_pricing_signing_seeds],
-    );
+    )?;
 
     // Create Fractional Mint
-    let _result = invoke_signed(
+    invoke_signed(
         &system_instruction::create_account(
             payer.key,
             fraction_mint.key,
@@ -323,10 +328,10 @@ pub fn create_vault(
         ),
         accounts,
         &[fraction_mint_signing_seeds],
-    );
+    )?;
 
     // Initialize Fractional Mint
-    let _result = invoke_signed(
+    invoke_signed(
         &initialize_mint(
             &spl_token::id(),
             fraction_mint.key,
@@ -336,10 +341,10 @@ pub fn create_vault(
         )?,
         accounts,
         &[fraction_mint_signing_seeds],
-    );
+    )?;
 
     // Create Associated Token Account for Fractional Mint and Vault (aka the Fractional Treasury)
-    let _result = invoke(
+    invoke(
         &create_associated_token_account(
             payer.key, 
             vault_mint_authority.key, 
@@ -347,17 +352,17 @@ pub fn create_vault(
         ),
         &[
             payer.clone(),
-            fraction_treasury_ata.clone(),
+            fraction_treasury.clone(),
             vault_mint_authority.clone(),
             fraction_mint.clone(),
             system_program.clone(),
             token_program.clone(),
             rent_program.clone(),
         ],
-    );
+    )?;
 
     // Create Associated Token Account for Native Sol and Vault (aka the Redeem Treasury)
-    let _result = invoke(
+    invoke(
         &create_associated_token_account(
             payer.key,
             vault_mint_authority.key,
@@ -365,17 +370,17 @@ pub fn create_vault(
         ),
         &[
             payer.clone(),
-            redeem_treasury_ata.clone(),
+            redeem_treasury.clone(),
             vault_mint_authority.clone(),
             native_mint_program.clone(),
             system_program.clone(),
             token_program.clone(),
             rent_program.clone(),
         ],
-    );
+    )?;
 
     // Create Vault Account
-    let _result = invoke_signed(
+    invoke_signed(
         &system_instruction::create_account(
             payer.key,
             vault.key,
@@ -385,24 +390,23 @@ pub fn create_vault(
         ),
         accounts,
         &[vault_signing_seeds],
-    );
+    )?;
 
     // Initialize Vault Account
-    let _result = invoke_signed(
+    invoke_signed(
         &create_init_vault_instruction(
             *token_vault_program.key,
             *fraction_mint.key,
-            *redeem_treasury_ata.key,
-            *fraction_treasury_ata.key,
+            *redeem_treasury.key,
+            *fraction_treasury.key,
             *vault.key,
-            // *vault_authority.key,  //todo make this the DAO?
-            *payer.key,
+            *vault_authority.key,
             *external_pricing_acct.key,
             false,
         ),
         accounts,
         &[vault_signing_seeds],
-    );
+    )?;
 
     Ok(())
 }
@@ -411,17 +415,19 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
 
     let accounts_iter = &mut accounts.iter();
 
-    let token = next_account_info(accounts_iter)?;
+    let mint = next_account_info(accounts_iter)?;
 
-    let payer = &mut next_account_info(accounts_iter)?;
+    let payer = next_account_info(accounts_iter)?;
 
-    let token_ata = next_account_info(accounts_iter)?;
+    let token_account = next_account_info(accounts_iter)?;
 
     let transfer_authority = next_account_info(accounts_iter)?;
 
+    let vault_authority = next_account_info(accounts_iter)?;
+
     let vault = next_account_info(accounts_iter)?;
 
-    let vault_authority = next_account_info(accounts_iter)?;
+    let vault_mint_authority = next_account_info(accounts_iter)?;
 
     let token_store = next_account_info(accounts_iter)?;
 
@@ -438,31 +444,31 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
     let _ata_program = next_account_info(accounts_iter)?;
 
     let (_transfer_authority_pda, transfer_bump) = Pubkey::find_program_address(
-        &[b"transfer", vault.key.as_ref(), token.key.as_ref()],
+        &[b"transfer", vault.key.as_ref(), mint.key.as_ref()],
         &program_id,
     );
     let transfer_authority_signer_seeds = &[
         b"transfer",
         vault.key.as_ref(),
-        token.key.as_ref(),
+        mint.key.as_ref(),
         &[transfer_bump],
     ];
 
     let (_store_pda, store_bump) = Pubkey::find_program_address(
-        &[b"store", vault.key.as_ref(), token.key.as_ref()],
+        &[b"store", vault.key.as_ref(), mint.key.as_ref()],
         &program_id,
     );
     let token_store_signer_seeds = &[
         b"store",
         vault.key.as_ref(),
-        token.key.as_ref(),
+        mint.key.as_ref(),
         &[store_bump],
     ];
 
     let rent = &Rent::from_account_info(rent_program)?;
 
     // Create Token Store account (Where the NFT will be transfered)
-    let _result = invoke_signed(
+    invoke_signed(
         &system_instruction::create_account(
             payer.key,
             token_store.key,
@@ -472,42 +478,42 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         ),
         accounts,
         &[token_store_signer_seeds],
-    );
+    )?;
 
      // Initialize Token Store account
     let _result = invoke(
         &initialize_account(
             &spl_token::id(),
             token_store.key,
-            token.key,
-            vault_authority.key,
+            mint.key,
+            vault_mint_authority.key,
         )
         .unwrap(),
         accounts,
     );
 
     // Allow the temporary transfer authority to transfer the NFT 
-    let _result = invoke(
+    invoke(
         &approve(
             token_program.key,
-            token_ata.key,
+            token_account.key,
             transfer_authority.key,
-            payer.key,
-            &[],
+            payer.key,   // the owner of the nft
+            &[], 
             1 as u64,
         )?,
         accounts,
-    );
+    )?;
 
     // Add the token to the vault
-    let _result = invoke_signed(
+    invoke_signed(
         &create_add_token_to_inactive_vault_instruction2(
             *token_vault_program.key,
             *safety_deposit_box.key,
-            *token_ata.key,
+            *token_account.key,
             *token_store.key,
             *vault.key,
-            *payer.key,
+            *vault_authority.key,
             *payer.key,
             *transfer_authority.key,
             1 as u64,
@@ -515,10 +521,10 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         &[
             payer.clone(),
             safety_deposit_box.clone(),
-            token_ata.clone(),
+            token_account.clone(),
             token_store.clone(),
             vault.clone(),
-            payer.clone(),
+            vault_authority.clone(),
             payer.clone(),
             transfer_authority.clone(),
             token_program.clone(),
@@ -529,7 +535,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             transfer_authority_signer_seeds,
             token_store_signer_seeds
         ],
-    );
+    )?;
 
     Ok(())
 }
@@ -541,7 +547,9 @@ pub fn fractionalize(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
-    let payer = &mut next_account_info(accounts_iter)?;
+    let _payer = next_account_info(accounts_iter)?;
+
+    let vault_authority = next_account_info(accounts_iter)?;
 
     let vault_info = next_account_info(accounts_iter)?;
 
@@ -558,33 +566,33 @@ pub fn fractionalize(
 
     if vault.state == VaultState::Inactive {
         // Activate the Vault if it is not already, this will mint shares
-        let _result = invoke(
+        invoke(
             &create_activate_vault_instruction(
                 *token_vault_program.key,
                 *vault_info.key,
                 *fraction_mint.key,
                 *fraction_treasury.key,
                 *vault_mint_authority.key,
-                *payer.key,
+                *vault_authority.key,
                 number_of_shares,
             ),
             accounts,
-        );
+        )?;
     } else {
         // Mint Additional Fractional Shares for already active vault
         // if allow_further_share_creation = false, this will throw an error
-        let _result = invoke(
+        invoke(
             &create_mint_shares_instruction(
                 *token_vault_program.key,
                 *fraction_treasury.key,
                 *fraction_mint.key,
                 *vault_info.key,
                 *vault_mint_authority.key,
-                *payer.key,
+                *vault_authority.key,
                 number_of_shares,
             ),
             accounts,
-        );
+        )?;
     }
     Ok(())
 }
@@ -596,7 +604,7 @@ pub fn send_share(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
-    let token = &mut next_account_info(accounts_iter)?;
+    let mint = &mut next_account_info(accounts_iter)?;
 
     let payer = &mut next_account_info(accounts_iter)?;
 
@@ -623,7 +631,7 @@ pub fn send_share(
     let rent_program = next_account_info(accounts_iter)?;
 
     let (_transfer_authority_pda, transfer_bump) = Pubkey::find_program_address(
-        &[b"transfer", vault.key.as_ref(), token.key.as_ref()],
+        &[b"transfer", vault.key.as_ref(), mint.key.as_ref()],
         &program_id,
     );
 
@@ -631,7 +639,7 @@ pub fn send_share(
     let token_acct = Account::unpack(&destination_ata.data.borrow());
     if !token_acct.is_ok() {
         // Create Associated Token Account for fractional share token
-        let _result = invoke(
+        invoke(
             &create_associated_token_account(payer.key, destination.key, fraction_mint.key),
             &[
                 payer.clone(),
@@ -642,11 +650,11 @@ pub fn send_share(
                 token_program.clone(),
                 rent_program.clone(),
             ],
-        );
+        )?;
     }
 
     // Withdraw Share from Fraction Treasury and send to Destination
-    let _result = invoke_signed(
+    invoke_signed(
         &create_withdraw_shares_instruction(
             *token_vault_program.key,
             *destination_ata.key,
@@ -660,10 +668,10 @@ pub fn send_share(
         &[&[
             b"transfer",
             vault.key.as_ref(),
-            token.key.as_ref(),
+            mint.key.as_ref(),
             &[transfer_bump],
         ]],
-    );
+    )?;
 
     Ok(())
 }
