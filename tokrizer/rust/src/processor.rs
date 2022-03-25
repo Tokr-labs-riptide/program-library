@@ -227,7 +227,7 @@ pub fn create_vault(
     vault_seed: String,
     vault_bump: u8,
 ) -> ProgramResult {
-    // Iterating accounts is safer than indexing
+
     let accounts_iter = &mut accounts.iter();
 
     let payer = next_account_info(accounts_iter)?;
@@ -256,15 +256,34 @@ pub fn create_vault(
 
     let native_mint_program = next_account_info(accounts_iter)?;
 
+    let vault_signing_seeds = &[
+        payer.key.as_ref(),
+        token_vault_program.key.as_ref(),
+        vault_seed.as_ref(),
+        &[vault_bump],
+    ];
+
     let (_external_pricing_pda, ebump) = Pubkey::find_program_address(
         &[b"external", vault.key.as_ref(), payer.key.as_ref()],
         &program_id,
     );
+    let external_pricing_signing_seeds = &[
+        b"external",
+        vault.key.as_ref(),
+        payer.key.as_ref(),
+        &[ebump],
+    ];
 
     let (_fraction_mint_pda, fbump) = Pubkey::find_program_address(
         &[b"fraction", vault.key.as_ref(), payer.key.as_ref()],
         &program_id,
     );
+    let fraction_mint_signing_seeds = &[
+        b"fraction",
+        vault.key.as_ref(),
+        payer.key.as_ref(),
+        &[fbump],
+    ];
 
     // Create External Pricing Account
     let rent = &Rent::from_account_info(rent_program)?;
@@ -277,12 +296,7 @@ pub fn create_vault(
             token_vault_program.key,
         ),
         accounts,
-        &[&[
-            b"external",
-            vault.key.as_ref(),
-            payer.key.as_ref(),
-            &[ebump],
-        ]],
+        &[external_pricing_signing_seeds],
     );
 
     // Initialize External Pricing Account
@@ -295,12 +309,7 @@ pub fn create_vault(
             true,
         ),
         accounts,
-        &[&[
-            b"external",
-            vault.key.as_ref(),
-            payer.key.as_ref(),
-            &[ebump],
-        ]],
+        &[external_pricing_signing_seeds],
     );
 
     // Create Fractional Mint
@@ -313,12 +322,7 @@ pub fn create_vault(
             &spl_token::id(),
         ),
         accounts,
-        &[&[
-            b"fraction",
-            vault.key.as_ref(),
-            payer.key.as_ref(),
-            &[fbump],
-        ]],
+        &[fraction_mint_signing_seeds],
     );
 
     // Initialize Fractional Mint
@@ -331,12 +335,7 @@ pub fn create_vault(
             0,
         )?,
         accounts,
-        &[&[
-            b"fraction",
-            vault.key.as_ref(),
-            payer.key.as_ref(),
-            &[fbump],
-        ]],
+        &[fraction_mint_signing_seeds],
     );
 
     // Create Associated Token Account for Fractional Mint and Vault (aka the Fractional Treasury)
@@ -385,12 +384,7 @@ pub fn create_vault(
             token_vault_program.key,
         ),
         accounts,
-        &[&[
-            payer.key.as_ref(),
-            token_vault_program.key.as_ref(),
-            vault_seed.as_ref(),
-            &[vault_bump],
-        ]],
+        &[vault_signing_seeds],
     );
 
     // Initialize Vault Account
@@ -407,12 +401,7 @@ pub fn create_vault(
             false,
         ),
         accounts,
-        &[&[
-            payer.key.as_ref(),
-            token_vault_program.key.as_ref(),
-            vault_seed.as_ref(),
-            &[vault_bump],
-        ]],
+        &[vault_signing_seeds],
     );
 
     Ok(())
@@ -452,11 +441,23 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         &[b"transfer", vault.key.as_ref(), token.key.as_ref()],
         &program_id,
     );
+    let transfer_authority_signer_seeds = &[
+        b"transfer",
+        vault.key.as_ref(),
+        token.key.as_ref(),
+        &[transfer_bump],
+    ];
 
     let (_store_pda, store_bump) = Pubkey::find_program_address(
         &[b"store", vault.key.as_ref(), token.key.as_ref()],
         &program_id,
     );
+    let token_store_signer_seeds = &[
+        b"store",
+        vault.key.as_ref(),
+        token.key.as_ref(),
+        &[store_bump],
+    ];
 
     let rent = &Rent::from_account_info(rent_program)?;
 
@@ -470,12 +471,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             &spl_token::id(),
         ),
         accounts,
-        &[&[
-            b"store",
-            vault.key.as_ref(),
-            token.key.as_ref(),
-            &[store_bump],
-        ]],
+        &[token_store_signer_seeds],
     );
 
      // Initialize Token Store account
@@ -530,18 +526,8 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             rent_program.clone(),
         ],
         &[
-            &[
-                b"transfer",
-                vault.key.as_ref(),
-                token.key.as_ref(),
-                &[transfer_bump],
-            ],
-            &[
-                b"store",
-                vault.key.as_ref(),
-                token.key.as_ref(),
-                &[store_bump],
-            ],
+            transfer_authority_signer_seeds,
+            token_store_signer_seeds
         ],
     );
 
