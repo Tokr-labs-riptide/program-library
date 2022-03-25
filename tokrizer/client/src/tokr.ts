@@ -389,7 +389,9 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
 
       let result = await connection.simulateTransaction(tx);
       if (result.value.err) {
+          console.log("Error:", result.value.logs)
           console.log("Simulation Failed! try again")
+
           instruction = await createMintNftInstruction(args, destination)  
       } else {
           console.log("Simulation Success!")
@@ -412,7 +414,7 @@ async function createMintNftInstruction(args: TokrizeArgs, destination: PublicKe
   args.mint_seed = mintSeed;
   let [mintKey, mintBump] = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
   args.mint_bump = mintBump;
-
+  console.log("Mint: ", mintKey);
   const data = Buffer.from(borsh.serialize(
     TokrizeSchema,
     args

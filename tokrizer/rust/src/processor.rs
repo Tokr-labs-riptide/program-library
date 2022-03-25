@@ -9,7 +9,8 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
     system_instruction,
-    sysvar::{self},
+    rent::Rent,
+    sysvar::{Sysvar, self},
 };
 use spl_token::{
     self,
@@ -135,18 +136,13 @@ pub fn mint_nft(
         &[metadata_bump],
     ];
 
-    // let rent = Rent {
-    //     lamports_per_byte_year: Mint::LEN as u64,
-    //     ..Rent::default()
-    // };
-    // let min_bal = rent.minimum_balance(Mint::LEN);
-    // //msg!(("minimum rent {}", min_bal);
-
+    // Create Mint Account
+    let rent = &Rent::from_account_info(rent_key)?;
     let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key,
             mint_input.key,
-            1461600 as u64, // wtf why does minimum balance give not enough
+            rent.minimum_balance(Mint::LEN),
             Mint::LEN as u64,
             &spl_token::id(),
         ),
@@ -154,6 +150,7 @@ pub fn mint_nft(
         &[mint_signer_seeds],
     );
 
+    // Init Mint Account
     let _result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
@@ -166,6 +163,7 @@ pub fn mint_nft(
         &[mint_signer_seeds],
     );
 
+    // Create Associated Token Account for new Mint and Destination
     let _result = invoke(
         &create_associated_token_account(payer.key, destination.key, mint_input.key),
         &[
@@ -179,12 +177,12 @@ pub fn mint_nft(
         ],
     );
 
+    // Create Metaplex Metadata Account for new Mint
     let creator = Creator {
         address: *creator.key,
         verified: true,
         share: 100 as u8,
     };
-
     let _result = invoke_signed(
         &create_metadata_accounts_v2(
             *metadata_program.key,
@@ -207,6 +205,7 @@ pub fn mint_nft(
         &[metadata_signer_seeds],
     );
 
+    // Mint the NFT
     let _result = invoke(
         &mint_to(
             &spl_token::id(),
@@ -267,17 +266,13 @@ pub fn create_vault(
         &program_id,
     );
 
-    // let rent = Rent {
-    //     lamports_per_byte_year: 82, // todo why does 42 not work grr
-    //     ..Rent::default()
-    // };
-
+    // Create External Pricing Account
+    let rent = &Rent::from_account_info(rent_program)?;
     let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key,
             external_pricing_acct.key,
-            // rent.minimum_balance(MAX_EXTERNAL_ACCOUNT_SIZE),
-            1183200 as u64,
+            rent.minimum_balance(MAX_EXTERNAL_ACCOUNT_SIZE),
             MAX_EXTERNAL_ACCOUNT_SIZE as u64,
             token_vault_program.key,
         ),
@@ -290,11 +285,12 @@ pub fn create_vault(
         ]],
     );
 
+    // Initialize External Pricing Account
     let _result = invoke_signed(
         &create_update_external_price_account_instruction(
             *token_vault_program.key,
             *external_pricing_acct.key,
-            0 as u64, // todo price?
+            0 as u64, // todo Price, set this number if we want to given tokens a price
             spl_token::native_mint::ID,
             true,
         ),
@@ -307,11 +303,12 @@ pub fn create_vault(
         ]],
     );
 
+    // Create Fractional Mint
     let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key,
             fraction_mint.key,
-            1461600 as u64, // wtf why does minimum balance give not enough
+            rent.minimum_balance(Mint::LEN),
             Mint::LEN as u64,
             &spl_token::id(),
         ),
@@ -324,6 +321,7 @@ pub fn create_vault(
         ]],
     );
 
+    // Initialize Fractional Mint
     let _result = invoke_signed(
         &initialize_mint(
             &spl_token::id(),
@@ -341,6 +339,25 @@ pub fn create_vault(
         ]],
     );
 
+    // Create Associated Token Account for Fractional Mint and Vault (aka the Fractional Treasury)
+    let _result = invoke(
+        &create_associated_token_account(
+            payer.key, 
+            vault_mint_authority.key, 
+            fraction_mint.key
+        ),
+        &[
+            payer.clone(),
+            fraction_treasury_ata.clone(),
+            vault_mint_authority.clone(),
+            fraction_mint.clone(),
+            system_program.clone(),
+            token_program.clone(),
+            rent_program.clone(),
+        ],
+    );
+
+    // Create Associated Token Account for Native Sol and Vault (aka the Redeem Treasury)
     let _result = invoke(
         &create_associated_token_account(
             payer.key,
@@ -358,25 +375,12 @@ pub fn create_vault(
         ],
     );
 
-    let _result = invoke(
-        &create_associated_token_account(payer.key, vault_mint_authority.key, fraction_mint.key),
-        &[
-            payer.clone(),
-            fraction_treasury_ata.clone(),
-            vault_mint_authority.clone(),
-            fraction_mint.clone(),
-            system_program.clone(),
-            token_program.clone(),
-            rent_program.clone(),
-        ],
-    );
-
+    // Create Vault Account
     let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key,
             vault.key,
-            //rent.minimum_balance(MAX_VAULT_SIZE),// why does this not work?
-            2317680 as u64,
+            rent.minimum_balance(MAX_VAULT_SIZE),
             MAX_VAULT_SIZE as u64,
             token_vault_program.key,
         ),
@@ -389,6 +393,7 @@ pub fn create_vault(
         ]],
     );
 
+    // Initialize Vault Account
     let _result = invoke_signed(
         &create_init_vault_instruction(
             *token_vault_program.key,
@@ -399,7 +404,7 @@ pub fn create_vault(
             // *vault_authority.key,  //todo make this the DAO?
             *payer.key,
             *external_pricing_acct.key,
-            true,
+            false,
         ),
         accounts,
         &[&[
@@ -453,11 +458,14 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         &program_id,
     );
 
+    let rent = &Rent::from_account_info(rent_program)?;
+
+    // Create Token Store account (Where the NFT will be transfered)
     let _result = invoke_signed(
         &system_instruction::create_account(
             payer.key,
             token_store.key,
-            2039280 as u64, // wtf why does minimum balance give not enough
+            rent.minimum_balance(Account::LEN),
             Account::LEN as u64,
             &spl_token::id(),
         ),
@@ -470,6 +478,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         ]],
     );
 
+     // Initialize Token Store account
     let _result = invoke(
         &initialize_account(
             &spl_token::id(),
@@ -481,6 +490,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
         accounts,
     );
 
+    // Allow the temporary transfer authority to transfer the NFT 
     let _result = invoke(
         &approve(
             token_program.key,
@@ -489,11 +499,11 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             payer.key,
             &[],
             1 as u64,
-        )
-        .unwrap(),
+        )?,
         accounts,
     );
 
+    // Add the token to the vault
     let _result = invoke_signed(
         &create_add_token_to_inactive_vault_instruction2(
             *token_vault_program.key,
@@ -538,6 +548,61 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
     Ok(())
 }
 
+pub fn fractionalize(
+    _program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    number_of_shares: u64,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+
+    let payer = &mut next_account_info(accounts_iter)?;
+
+    let vault_info = next_account_info(accounts_iter)?;
+
+    let vault_mint_authority = next_account_info(accounts_iter)?;
+
+    let fraction_mint = next_account_info(accounts_iter)?;
+
+    let fraction_treasury = next_account_info(accounts_iter)?;
+
+    let token_vault_program = next_account_info(accounts_iter)?;
+
+    let vault = Vault::from_account_info(vault_info)?;
+
+
+    if vault.state == VaultState::Inactive {
+        // Activate the Vault if it is not already, this will mint shares
+        let _result = invoke(
+            &create_activate_vault_instruction(
+                *token_vault_program.key,
+                *vault_info.key,
+                *fraction_mint.key,
+                *fraction_treasury.key,
+                *vault_mint_authority.key,
+                *payer.key,
+                number_of_shares,
+            ),
+            accounts,
+        );
+    } else {
+        // Mint Additional Fractional Shares for already active vault
+        // if allow_further_share_creation = false, this will throw an error
+        let _result = invoke(
+            &create_mint_shares_instruction(
+                *token_vault_program.key,
+                *fraction_treasury.key,
+                *fraction_mint.key,
+                *vault_info.key,
+                *vault_mint_authority.key,
+                *payer.key,
+                number_of_shares,
+            ),
+            accounts,
+        );
+    }
+    Ok(())
+}
+
 pub fn send_share(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -576,8 +641,10 @@ pub fn send_share(
         &program_id,
     );
 
+    // Check if the destination already has an ATA for this fractional share
     let token_acct = Account::unpack(&destination_ata.data.borrow());
     if !token_acct.is_ok() {
+        // Create Associated Token Account for fractional share token
         let _result = invoke(
             &create_associated_token_account(payer.key, destination.key, fraction_mint.key),
             &[
@@ -592,6 +659,7 @@ pub fn send_share(
         );
     }
 
+    // Withdraw Share from Fraction Treasury and send to Destination
     let _result = invoke_signed(
         &create_withdraw_shares_instruction(
             *token_vault_program.key,
@@ -614,61 +682,8 @@ pub fn send_share(
     Ok(())
 }
 
-pub fn fractionalize(
-    _program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    number_of_shares: u64,
-) -> ProgramResult {
-    let accounts_iter = &mut accounts.iter();
-
-    let payer = &mut next_account_info(accounts_iter)?;
-
-    let vault_info = next_account_info(accounts_iter)?;
-
-    let vault_mint_authority = next_account_info(accounts_iter)?;
-
-    let fraction_mint = next_account_info(accounts_iter)?;
-
-    let fraction_treasury = next_account_info(accounts_iter)?;
-
-    let token_vault_program = next_account_info(accounts_iter)?;
-
-    let vault = Vault::from_account_info(vault_info)?;
-
-    if vault.state == VaultState::Inactive {
-        let _result = invoke(
-            &create_activate_vault_instruction(
-                *token_vault_program.key,
-                *vault_info.key,
-                *fraction_mint.key,
-                *fraction_treasury.key,
-                *vault_mint_authority.key,
-                *payer.key,
-                number_of_shares,
-            ),
-            accounts,
-        );
-    }
-
-    let _result = invoke(
-        &create_mint_shares_instruction(
-            *token_vault_program.key,
-            *fraction_treasury.key,
-            *fraction_mint.key,
-            *vault_info.key,
-            *vault_mint_authority.key,
-            *payer.key,
-            number_of_shares,
-        ),
-        accounts,
-    );
-
-    Ok(())
-}
-
-
 // I had to write this because mpl_token_vault::instruction::create_add_token_to_inactive_vault_instruction
-// does not work!
+// does not work! PR: https://github.com/metaplex-foundation/metaplex-program-library/pull/310
 #[allow(clippy::too_many_arguments)]
 pub fn create_add_token_to_inactive_vault_instruction2(
     program_id: Pubkey,
