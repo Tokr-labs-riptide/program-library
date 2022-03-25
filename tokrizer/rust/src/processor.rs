@@ -235,6 +235,8 @@ pub fn create_vault(
 
     let payer = next_account_info(accounts_iter)?;
 
+    let vault_authority = next_account_info(accounts_iter)?;
+
     let vault = next_account_info(accounts_iter)?;
 
     let vault_mint_authority = next_account_info(accounts_iter)?;
@@ -398,8 +400,7 @@ pub fn create_vault(
             *redeem_treasury.key,
             *fraction_treasury.key,
             *vault.key,
-            // *vault_authority.key,  //todo make this the DAO?
-            *payer.key,
+            *vault_authority.key,
             *external_pricing_acct.key,
             false,
         ),
@@ -416,15 +417,17 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
 
     let mint = next_account_info(accounts_iter)?;
 
-    let payer = &mut next_account_info(accounts_iter)?;
+    let payer = next_account_info(accounts_iter)?;
 
     let token_account = next_account_info(accounts_iter)?;
 
     let transfer_authority = next_account_info(accounts_iter)?;
 
+    let vault_authority = next_account_info(accounts_iter)?;
+
     let vault = next_account_info(accounts_iter)?;
 
-    let vault_authority = next_account_info(accounts_iter)?;
+    let vault_mint_authority = next_account_info(accounts_iter)?;
 
     let token_store = next_account_info(accounts_iter)?;
 
@@ -483,7 +486,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             &spl_token::id(),
             token_store.key,
             mint.key,
-            vault_authority.key,
+            vault_mint_authority.key,
         )
         .unwrap(),
         accounts,
@@ -495,8 +498,8 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             token_program.key,
             token_account.key,
             transfer_authority.key,
-            payer.key,
-            &[],
+            payer.key,   // the owner of the nft
+            &[], 
             1 as u64,
         )?,
         accounts,
@@ -510,7 +513,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             *token_account.key,
             *token_store.key,
             *vault.key,
-            *payer.key,
+            *vault_authority.key,
             *payer.key,
             *transfer_authority.key,
             1 as u64,
@@ -521,7 +524,7 @@ pub fn add_nft_to_vault(program_id: &Pubkey, accounts: &[AccountInfo]) -> Progra
             token_account.clone(),
             token_store.clone(),
             vault.clone(),
-            payer.clone(),
+            vault_authority.clone(),
             payer.clone(),
             transfer_authority.clone(),
             token_program.clone(),
@@ -544,7 +547,9 @@ pub fn fractionalize(
 ) -> ProgramResult {
     let accounts_iter = &mut accounts.iter();
 
-    let payer = &mut next_account_info(accounts_iter)?;
+    let _payer = next_account_info(accounts_iter)?;
+
+    let vault_authority = next_account_info(accounts_iter)?;
 
     let vault_info = next_account_info(accounts_iter)?;
 
@@ -568,7 +573,7 @@ pub fn fractionalize(
                 *fraction_mint.key,
                 *fraction_treasury.key,
                 *vault_mint_authority.key,
-                *payer.key,
+                *vault_authority.key,
                 number_of_shares,
             ),
             accounts,
@@ -583,7 +588,7 @@ pub fn fractionalize(
                 *fraction_mint.key,
                 *vault_info.key,
                 *vault_mint_authority.key,
-                *payer.key,
+                *vault_authority.key,
                 number_of_shares,
             ),
             accounts,
