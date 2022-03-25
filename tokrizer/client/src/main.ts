@@ -43,8 +43,8 @@ programCommand('vaultNft')
     await initialize();
 
     await tokr.addTokenToVault(
-      new PublicKey("CdRgFx3w8DPNMwxbZF38UgWj9mysEr1PiVsWy4kwsqHF"), // vault address 
-      new PublicKey("6bomCSZ2DWxaKYNpDo5QKTQJvDpu5496RZbwY5bQzh5q"), // token address
+      new PublicKey("CiC2Jk36rFcaGzvgwGceKVRD9efANa576rVAZCeN2EvT"), // vault address 
+      new PublicKey("AhrDskTtZZoMsiGDKpfD1Z6WsqimcfC9eQGSPuCJwYAk"), // token address
     );
 
     console.log('Success');
@@ -57,7 +57,7 @@ programCommand('fractionalize')
     await initialize();
 
     await tokr.mintFractionalShares(
-      new PublicKey("CdRgFx3w8DPNMwxbZF38UgWj9mysEr1PiVsWy4kwsqHF"), // vault address 
+      new PublicKey("CiC2Jk36rFcaGzvgwGceKVRD9efANa576rVAZCeN2EvT"), // vault address 
       150,
     );
 
@@ -71,9 +71,9 @@ programCommand('send')
     await initialize();
 
     await tokr.sendShare(
-      new PublicKey("CdRgFx3w8DPNMwxbZF38UgWj9mysEr1PiVsWy4kwsqHF"), // vault address 
+      new PublicKey("CiC2Jk36rFcaGzvgwGceKVRD9efANa576rVAZCeN2EvT"), // vault address 
       new PublicKey("HEPfmxFKcTRTsxoWCatDQeKViDih3XrCD7eVs5t9iums"), // destination
-      new PublicKey("6bomCSZ2DWxaKYNpDo5QKTQJvDpu5496RZbwY5bQzh5q"), // token address
+      new PublicKey("AhrDskTtZZoMsiGDKpfD1Z6WsqimcfC9eQGSPuCJwYAk"), // token address
       3,
     );
 
