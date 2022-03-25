@@ -414,7 +414,7 @@ async function createMintNftInstruction(args: TokrizeArgs, destination: PublicKe
   args.mint_seed = mintSeed;
   let [mintKey, mintBump] = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
   args.mint_bump = mintBump;
-  console.log("Mint: ", mintKey);
+  console.log("Mint: ", mintKey.toBase58());
   const data = Buffer.from(borsh.serialize(
     TokrizeSchema,
     args
