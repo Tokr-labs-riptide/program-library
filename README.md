@@ -1,6 +1,6 @@
 # TOKR Labs Program Library
-Solana Programs to facilitate Real Estate NFTs (rNFT)
+Solana Programs for the TOKR Protocol enable Real Estate NFTs (rNFT)
 
 
 ### Programs
-[Tokrizer](tokrizer/README.md)
+1. [Tokrizer](tokrizer/README.md)
