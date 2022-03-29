@@ -26,18 +26,19 @@ Fractionalizing works by adding the rNFT to a Metaplex vault which acts as a sor
 minting a specified amount of fractional shares. These shares can them be transfered to others to represent fractional ownership of the original rNFT. All shares
 must be transfered back to the vault before the vault can be "Combined" and the original NFT withdrawn. 
 This is done with 4 instruction calls.
+
 #### 2 - Create Vault
 - Create and initialize External Pricing account as an oracle for the fractional shares.
 - Create Fractional Mint for minting the fractional shares.
 - Create the Fractional Treasury Associated Token Account to hold the shares after they are minted but before they are sent to recipients.
-- Create the Redeem Treasury to hold SOL needed to buy back fractional shares 
-- Finally Create the Vault
+- Create the Redeem Treasury to hold SOL needed to buy back fractional shares.
+- Finally Create the Vault.
 
 #### 3 - Add Token To Vault
 - (On the client side) Create transfer authority to move the NFT to the vault.
 - Create Safety deposit box to hold the NFT.
 - Delegate authority to move the NFT to the transfer authority.
-- Call the Add Token To Vault Metaplex instruction
+- Call the Add Token To Vault Metaplex instruction.
 
 #### 4 - Fractionalize
 - Call the Activate Vault metaplex instruction, which authomatically mints Fractional Shares
