@@ -189,10 +189,10 @@ export async function mintNft(args: TokrizeArgs, destination: PublicKey): Promis
 
 async function createMintNftInstruction(args: TokrizeArgs, destination: PublicKey) {
   let mintSeed = (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2) + (Math.random() + 1).toString(36).substring(2);
-  console.log("random seed", mintSeed);
   args.mint_seed = mintSeed;
   let [mintKey, mintBump] = (await PublicKey.findProgramAddress([Buffer.from(mintSeed), payer.publicKey.toBuffer(), destination.toBuffer()], programId));
   args.mint_bump = mintBump;
+  console.log(`random seed ${mintSeed}, bump:${mintBump}`);
   console.log("Mint: ", mintKey.toBase58());
   const data = Buffer.from(borsh.serialize(
     TokrizeSchema,

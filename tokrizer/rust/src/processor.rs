@@ -111,6 +111,26 @@ pub fn mint_nft(
 
     let rent_program = next_account_info(accounts_iter)?;
 
+    // todo check if metadata input is correct
+    let (mint_pda_key, mind_pda_bump) = Pubkey::find_program_address(
+        &[
+            mint_seed.as_bytes(),
+            payer.key.as_ref(),
+            destination.key.as_ref(),
+        ],
+        program_id
+    );
+    msg!("MINT KEY: {}, BUMP: {}", mint_pda_key, mind_pda_bump);
+    if mint_pda_key != *mint.key {
+        msg!("Generated Mint PDA key mismatch");
+        return Err(ProgramError::IllegalOwner);
+    }
+
+    if mint_bump != mind_pda_bump {
+        msg!("Mint PDA bump mismatch");
+        return Err(ProgramError::IllegalOwner);
+    }
+
     let mint_signer_seeds = &[
         mint_seed.as_bytes(),
         payer.key.as_ref(),
@@ -309,7 +329,7 @@ pub fn create_vault(
         &create_update_external_price_account_instruction(
             *token_vault_program.key,
             *external_pricing_acct.key,
-            0 as u64, // todo Price, set this number if we want to given tokens a price
+            0 as u64, // todo Price, set this number if we want to give tokens a price
             spl_token::native_mint::ID,
             true,
         ),
